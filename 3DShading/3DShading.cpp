@@ -2,14 +2,28 @@
 //
 
 #include "pch.h"
-#include <iostream>
+#define NONE -1;
 
 int Main_Window;
-
+static int MouseX;
+static int MouseY;
+static int Button = NONE;
 
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 900
 UCHAR pixels[SCREEN_WIDTH*SCREEN_HEIGHT * 3] = { 0 };
+
+Camera cam;
+MyObject * objList[10]; //allowing a fixed amount of objects
+vec3 LightSource = vec3(-100, 100, -100);
+double eps = 1e-5;
+//###############setting objects##############//
+vec3 sphereColor = vec3(255, 0, 255);
+vec3 planeColor = vec3(0, 255, 0);
+vec3 center = vec3(0, 500, 0);
+Sphere sp1(200, sphereColor, center);
+Plane pl1(vec3(0, -1, 0), vec3(0, 500, 0), planeColor);
+int objNum = 0;
 
 static void init(void)
 {
@@ -32,21 +46,10 @@ static void windowDisplay(void)
 	glClear(GL_COLOR_BUFFER_BIT);
 	glRasterPos2i(0, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	Camera cam;
-	MyObject * objList[10]; //allowing a fixed amount of objects
-	vec3 LightSource = vec3(-100, 100, -100);
-	double eps = 1e-5;
-	//###############setting objects##############//
-	vec3 sphereColor = vec3(255, 0, 255);
-	vec3 planeColor = vec3(0, 255, 0);
-	vec3 center = vec3(0, 500, 0);
-	Sphere sp1(200, sphereColor, center);
-	Plane pl1(vec3(0, -1, 0), vec3(0, 500, 0), planeColor);
-	int objNum = 0;
 
 
 	//############setting camera##############//
-	cam.p = vec3(0, 400, -400);
+	cam.p = vec3(MouseX, 0, MouseY);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
@@ -61,20 +64,13 @@ static void windowDisplay(void)
 	vec3 s0 = sCenter - n0 * (float)(cam.sx / 2.0) - n1 * (float)(cam.sy / 2.0);
 
 
-
 	printf("%lf ", sp1.r);
 	printf("%lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
 
-	memset(pixels, 0, SCREEN_WIDTH*SCREEN_HEIGHT * 3);
-	objList[objNum++] = &sp1;
-	objList[objNum++] = &pl1;
-
-
-
 	for (int j = SCREEN_HEIGHT - 1; j >= 0; j--)
 		for (int i = 0; i < SCREEN_WIDTH; i++)
-		{
-			vec3 drawColor = vec3 (0,0,0);
+		{		
+			vec3 drawColor = vec3(0, 0, 0);
 			float ix = i * 1.0 / SCREEN_WIDTH;
 			float jy = j * 1.0 / SCREEN_HEIGHT;
 			int k = (j * SCREEN_WIDTH + i) * 3;
@@ -106,8 +102,7 @@ static void windowDisplay(void)
 			}
 
 			if (objDrawn>=0)
-			{
-				
+			{	
 				float T = objList[objDrawn]->diffuse(npe, cam.p, LightSource, 0);
 				float S = objList[objDrawn]->specular(npe, cam.p, LightSource,0);
 				drawColor = T* objList[objDrawn]->color + (1-T)*vec3(0,0,0);
@@ -125,10 +120,59 @@ static void windowDisplay(void)
 	glFlush();
 }
 
+void handleButtons(int button, int state, int x, int y)
+{
+	if (state == GLUT_UP)
+	{
+		button = NONE;
+	}
+	else
+	{
+		MouseX = x;
+		MouseY = -y;
+
+		Button = button;
+	}
+
+}
+
+/*control mouse scroll wheel*/
+void handlewheel(int button, int direction, int x, int y)
+{
+	//camera1.Mouse_Sroll(direction);
+	glutPostRedisplay();
+}
+
+/*(mouse motion call back) when mouse moves with a button down, update approriate camera parameters*/
+void handleMotion(int x, int y)
+{
+	y = -y;
+
+	int dy = y - MouseY;
+	int dx = x - MouseX;
+
+	switch (Button) {
+	case GLUT_LEFT_BUTTON:
+		if (glutGetModifiers() == GLUT_ACTIVE_ALT)
+		{
+			//camera1.Mouse_Motion(dx, dy);
+			glutPostRedisplay();
+			break;
+		}
+	case GLUT_MIDDLE_BUTTON:
+		break;
+	}
+
+	MouseX = x;
+	MouseY = y;
+}
+
 int main(int argc, char *argv[])
 {
 
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
+	objList[objNum++] = &sp1;
+	objList[objNum++] = &pl1;
 
 	glutInit(&argc, argv);      // intialize glut package
 	glutInitWindowPosition(100, 100); // Where the window will display on-screen.
@@ -137,9 +181,9 @@ int main(int argc, char *argv[])
 	Main_Window = glutCreateWindow("glsl");
 	glutReshapeFunc(windowResize);
 	glutDisplayFunc(windowDisplay);
-	//glutMouseFunc(handleButtons);
-	//glutMotionFunc(handleMotion);
-	//glutMouseWheelFunc(handlewheel);
+	glutMouseFunc(handleButtons);
+	glutMotionFunc(handleMotion);
+	glutMouseWheelFunc(handlewheel);
 
 	glewInit();
 	if (glewIsSupported("GL_VERSION_4_3"))
