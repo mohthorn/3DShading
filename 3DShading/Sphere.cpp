@@ -8,7 +8,7 @@ float Sphere::hit(vec3 npe, vec3 pe)
 {
 	float b = fabs(dot(npe, p0 - pe));
 	float c = dot(p0 - pe, p0 - pe) - r * r;
-	float c2 = dot(p0 - pe, p0 - pe) - 1.01* r * r;
+	float c2 = dot(p0 - pe, p0 - pe) - 1.01f* r * r;
 	float result = b * b - c;
 	if (c < 0)
 		return FAILCODE;
@@ -23,33 +23,43 @@ float Sphere::hit(vec3 npe, vec3 pe)
 	return th;
 }
 
-float Sphere::diffuse(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta)
+float Sphere::diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 {
-	double T = 0;
-	float th = 0;
-	if ((th=hit(npe, pe))>0)
+	float T = 0;
+	if (th>0)
 	{
 		vec3 ph = pe + th*npe;
 		vec3 n = normalize(ph - p0);
-		vec3 nL = normalize(L - ph);
+		vec3 nL = normalize(light.position - ph);
+		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
+		{
+			return 0;
+		}
+		if (light.type == DIR)
+			nL = normalize(light.direction);
 		T = dot(nL, n);
-		T = (T + 1) / 2.0;
+		T = (T + 1) / 2.0f;
 		return diffuseFunction(T);
 	}
 	return MISS;
 }
-float Sphere::specular(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta)
+float Sphere::specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 {
-	double S = 0;
-	float th = 0;
-	if ((th = hit(npe, pe)) > 0)
+	float S = 0;
+	if (th > 0)
 	{
 		vec3 ph = pe + th * npe;
 		vec3 n = normalize(ph - p0);
-		vec3 nL = normalize(L - ph);
+		vec3 nL = normalize(light.position - ph);
+		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
+		{
+			return 0;
+		}
+		if (light.type == DIR)
+			nL = normalize(light.direction);
 		vec3 R = -1.0f * nL + 2.0f *(dot(nL, n)*n);
 		S = dot(R, -npe);
-		S = (S + 1) / 2.0;
+		S = (S + 1) / 2.0f;
 		return specularFunction(S);
 	}
 	return MISS;

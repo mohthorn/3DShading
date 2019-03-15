@@ -21,7 +21,7 @@ float MyObject::diffuseFunction(float T)
 	float T_ret = 0;
 	vec2 p0 = vec2(0, 0);
 	vec2 p1 = vec2(0.6, 0.3);
-	vec2 p2 = vec2(1, 1);
+	vec2 p2 = vec2(0.99, 1);
 	if (T < p1[0])
 		T_ret = (T - p0[0]) / (p1[0] - p0[0]) * (p1[1] - p0[1]) + p0[1];
 	if (T < p2[0] && T >= p1[0])

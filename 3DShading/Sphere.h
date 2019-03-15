@@ -8,8 +8,8 @@ class Sphere :
 public:
 	float r;
 	float hit(glm::vec3 npe, glm::vec3 pe);
-	float diffuse(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta);
-	float specular(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta);
+	float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);
+	float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);
 	Sphere();
 	Sphere(float r, glm::vec3 color, glm::vec3 p0);
 	~Sphere();

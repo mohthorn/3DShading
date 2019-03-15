@@ -25,6 +25,8 @@
 #include "Object.h";
 #include "Plane.h"
 #include <cmath>
+#include "Light.h"
+#include <random>
 // TODO: add headers that you want to pre-compile here
 
 #endif //PCH_H

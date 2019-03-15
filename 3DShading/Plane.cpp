@@ -20,15 +20,21 @@ Plane::Plane(glm::vec3 n0, glm::vec3 p0, glm::vec3 color)
 	this->color = color;
 }
 
-float Plane::diffuse(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta)
+float Plane::diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 {
 	double T = 0;
-	float th = 0;
-	if ((th = hit(npe, pe)) > 0)
+	if (th  > 0)
 	{
 		vec3 ph = pe + th * npe;
 		vec3 n = n0;
-		vec3 nL = normalize(L - ph);
+		vec3 nL = normalize(light.position - ph);
+
+		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
+		{
+			return 0;
+		}
+		if (light.type == DIR)
+			nL = normalize(light.direction);
 		T = dot(nL, n);
 		T = (T + 1) / 2.0;
 		return diffuseFunction(T);
@@ -36,15 +42,20 @@ float Plane::diffuse(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta)
 	return MISS;
 }
 
-float Plane::specular(glm::vec3 npe, glm::vec3 pe, glm::vec3 L, float theta)
+float Plane::specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 {
 	double S = 0;
-	float th = 0;
-	if ((th = hit(npe, pe)) > 0)
+	if (th > 0)
 	{
 		vec3 ph = pe + th * npe;
 		vec3 n = n0;
-		vec3 nL = normalize(L - ph);
+		vec3 nL = normalize(light.position - ph);
+		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
+		{
+			return 0;
+		}
+		if (light.type == DIR)
+			nL = normalize(light.direction);
 		vec3 R = -1.0f * nL + 2.0f *(dot(nL, n)*n);
 		S = dot(R, -npe);
 		S = (S + 1) / 2.0;

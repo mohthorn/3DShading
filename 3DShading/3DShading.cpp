@@ -2,7 +2,8 @@
 //
 
 #include "pch.h"
-#define NONE -1;
+#define NONE -1
+#define M 2
 
 int Main_Window;
 static int MouseX;
@@ -11,6 +12,7 @@ static int Button = NONE;
 
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 900
+#define PI 3.14
 UCHAR pixels[SCREEN_WIDTH*SCREEN_HEIGHT * 3] = { 0 };
 
 Camera cam;
@@ -22,8 +24,18 @@ vec3 sphereColor = vec3(255, 0, 255);
 vec3 planeColor = vec3(0, 255, 0);
 vec3 center = vec3(0, 500, 0);
 Sphere sp1(200, sphereColor, center);
-Plane pl1(vec3(0, -1, 0), vec3(0, 500, 0), planeColor);
+Plane pl1(vec3(0, -1, 0), vec3(-1000, 1000, -1000), planeColor);
+Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(125, 125, 0));
+Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -1000), vec3(0, 125, 125));
 int objNum = 0;
+vec3 LD = vec3(0, -1, 0);
+float Ltheta = 50.0*PI/180.0;
+Light LL(DIR, LightSource, LD, Ltheta);
+
+std::random_device rd;  //Will be used to obtain a seed for the random number engine
+std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
+std::uniform_real_distribution<> dis(0, 1);
+
 
 static void init(void)
 {
@@ -49,12 +61,13 @@ static void windowDisplay(void)
 
 
 	//############setting camera##############//
-	cam.p = vec3(MouseX, 0, MouseY);
+	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
 	cam.sy = 10;
 	cam.d = 5;
+	printf("%lf,%lf,%lf", cam.p[0], cam.p[1], cam.p[2]);
 
 	vec3 sCenter = cam.p + normalize(cam.v0) * (float)cam.d;
 
@@ -62,59 +75,63 @@ static void windowDisplay(void)
 	vec3 n0 = normalize(glm::cross(n2, cam.vUp));
 	vec3 n1 = glm::cross(n0, n2);
 	vec3 s0 = sCenter - n0 * (float)(cam.sx / 2.0) - n1 * (float)(cam.sy / 2.0);
-
+	
 
 	printf("%lf ", sp1.r);
 	printf("%lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
 
 	for (int j = SCREEN_HEIGHT - 1; j >= 0; j--)
 		for (int i = 0; i < SCREEN_WIDTH; i++)
-		{		
-			vec3 drawColor = vec3(0, 0, 0);
-			float ix = i * 1.0 / SCREEN_WIDTH;
-			float jy = j * 1.0 / SCREEN_HEIGHT;
+		{	
+			double ri = dis(gen);
+			double rj = dis(gen);
 			int k = (j * SCREEN_WIDTH + i) * 3;
-			//if (fabs(ix - 0.5) < 0.0001 && fabs(jy - 0.5) < 0.0001)
-			//{
-			//	int a = 0;
-			//}
-			vec3 npe = s0 + n0 * ix * cam.sx + n1 * jy *cam.sy;
-			npe = npe - cam.p;
-			npe = normalize(npe);
-
-			float th = 1e9;
-			int objDrawn = -1;
-			for (int oo = 0; oo < objNum; oo++)
-			{
-				float cur_th = objList[oo]->hit(npe, cam.p);
-				if (cur_th < th && (cur_th>0 || fabs(cur_th - BOUNDARY) < eps))
+			vec3 colorSum = vec3(0, 0, 0);
+			for(int ii=0;ii<M;ii++)
+				for (int jj = 0; jj < M; jj++)
 				{
-					th = cur_th;
-					objDrawn = oo;
+					vec3 drawColor = vec3(0, 0, 0);
+					float ix = (i + (ii + ri) * 1.0/M) * 1.0 / SCREEN_WIDTH;
+					float jy = (j + (jj + rj) * 1.0 /M) * 1.0 / SCREEN_HEIGHT;
+
+					vec3 npe = s0 + n0 * ix * cam.sx + n1 * jy *cam.sy;
+					npe = npe - cam.p;
+					npe = normalize(npe);
+
+					float th = 1e9;
+					int objDrawn = -1;
+					for (int oo = 0; oo < objNum; oo++)
+					{
+						float cur_th = objList[oo]->hit(npe, cam.p);
+						if (cur_th < th && (cur_th > 0 || fabs(cur_th - BOUNDARY) < eps))
+						{
+							th = cur_th;
+							objDrawn = oo;
+						}
+					}
+
+					if (fabs(th - FAILCODE) < 1e-5)
+					{
+						printf("error, camera inside the shape\r\n");
+						exit(0);
+						//return FAILCODE;
+					}
+
+					if (objDrawn >= 0)
+					{
+						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
+						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
+						drawColor = T * objList[objDrawn]->color + (1 - T)*vec3(0, 0, 0);
+						drawColor = S * vec3(255, 255, 255) + (1 - S) *drawColor;
+						if (fabs(th - BOUNDARY) < eps)
+							drawColor = vec3(255, 0, 0);
+					}
+
+					colorSum += drawColor;
 				}
-			}
-
-			if (fabs(th - FAILCODE) < 1e-5)
-			{
-				printf("error, camera inside the shape\r\n");
-				exit(0);
-				//return FAILCODE;
-			}
-
-			if (objDrawn>=0)
-			{	
-				float T = objList[objDrawn]->diffuse(npe, cam.p, LightSource, 0);
-				float S = objList[objDrawn]->specular(npe, cam.p, LightSource,0);
-				drawColor = T* objList[objDrawn]->color + (1-T)*vec3(0,0,0);
-				drawColor = S * vec3(255, 255, 255) + (1 - S) *drawColor;
-				if (fabs(th - BOUNDARY) < eps)
-					drawColor = vec3(255, 0, 0);
-
-			}
-
-			pixels[k] = drawColor[0];
-			pixels[k + 1] = drawColor[1];
-			pixels[k + 2] = drawColor[2];
+			pixels[k] =colorSum[0] / (float)(M*M);
+			pixels[k + 1] =colorSum[1] / (float)(M*M);
+			pixels[k + 2] =colorSum[2] / (float)(M*M);
 		}
 	glDrawPixels(SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 	glFlush();
@@ -173,7 +190,8 @@ int main(int argc, char *argv[])
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
 	objList[objNum++] = &sp1;
 	objList[objNum++] = &pl1;
-
+	objList[objNum++] = &pl2;
+	objList[objNum++] = &pl3;
 	glutInit(&argc, argv);      // intialize glut package
 	glutInitWindowPosition(100, 100); // Where the window will display on-screen.
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE); // create single buffer RGB window
