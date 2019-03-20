@@ -8,7 +8,7 @@ float Sphere::hit(vec3 npe, vec3 pe)
 {
 	float b = fabs(dot(npe, p0 - pe));
 	float c = dot(p0 - pe, p0 - pe) - r * r;
-	float c2 = dot(p0 - pe, p0 - pe) - 1.01f* r * r;
+	float c2 = dot(p0 - pe, p0 - pe) - 1.1f* r * r;
 	float result = b * b - c;
 	if (c < 0)
 		return FAILCODE;
@@ -64,6 +64,27 @@ float Sphere::specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 	}
 	return MISS;
 }
+
+float Sphere::shadowLength(glm::vec3 & npl, Light light, float &ret)
+{
+	vec3 pl = p0 - light.position;
+	float b = fabs(dot(npl, pl));
+	float c = dot(pl, pl) - r * r;
+	float result = b * b - c;
+	if (c < 0)
+		return FAILCODE;
+	if (result < 0)
+	{
+		return 0;
+	}
+
+	float th = b - sqrt(result);
+	ret = 2 * sqrt(result);
+
+	return th;
+}
+
+
 Sphere::Sphere()
 {
 }
@@ -73,6 +94,7 @@ Sphere::Sphere(float nr, glm::vec3 ncolor, glm::vec3 np0)
 	r = nr;
 	color = ncolor;
 	p0 = np0;
+	color_dark = 0.1f * ncolor;
 }
 
 

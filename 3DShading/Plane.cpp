@@ -18,6 +18,7 @@ Plane::Plane(glm::vec3 n0, glm::vec3 p0, glm::vec3 color)
 	this->n0 = normalize(n0);
 	this->p0 = p0;
 	this->color = color;
+	this->color_dark = 0.1f * color ;
 }
 
 float Plane::diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
@@ -62,4 +63,9 @@ float Plane::specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
 		return specularFunction(S);
 	}
 	return MISS;
+}
+
+float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret)
+{
+	return 0.0f;
 }

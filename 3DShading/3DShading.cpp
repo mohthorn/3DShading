@@ -3,7 +3,7 @@
 
 #include "pch.h"
 #define NONE -1
-#define M 2
+#define M 1
 
 int Main_Window;
 static int MouseX;
@@ -17,7 +17,7 @@ UCHAR pixels[SCREEN_WIDTH*SCREEN_HEIGHT * 3] = { 0 };
 
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
-vec3 LightSource = vec3(-100, 100, -100);
+vec3 LightSource = vec3(100, 0, 1000);
 double eps = 1e-5;
 //###############setting objects##############//
 vec3 sphereColor = vec3(255, 0, 255);
@@ -29,8 +29,8 @@ Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(125, 125, 0));
 Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -1000), vec3(0, 125, 125));
 int objNum = 0;
 vec3 LD = vec3(0, -1, 0);
-float Ltheta = 50.0*PI/180.0;
-Light LL(DIR, LightSource, LD, Ltheta);
+float Ltheta = 30.0*PI/180.0;
+Light LL(POINT, LightSource, LD, Ltheta);
 
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
 std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -100,6 +100,8 @@ static void windowDisplay(void)
 
 					float th = 1e9;
 					int objDrawn = -1;
+
+					//get the closest hit object
 					for (int oo = 0; oo < objNum; oo++)
 					{
 						float cur_th = objList[oo]->hit(npe, cam.p);
@@ -108,7 +110,7 @@ static void windowDisplay(void)
 							th = cur_th;
 							objDrawn = oo;
 						}
-					}
+					}	
 
 					if (fabs(th - FAILCODE) < 1e-5)
 					{
@@ -121,8 +123,30 @@ static void windowDisplay(void)
 					{
 						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
-						drawColor = T * objList[objDrawn]->color + (1 - T)*vec3(0, 0, 0);
-						drawColor = S * vec3(255, 255, 255) + (1 - S) *drawColor;
+						drawColor = T * objList[objDrawn]->color + (1 - T)*objList[objDrawn]->color_dark;
+						//###############Cast Shadow################//
+						vec3 pl = cam.p + th * npe - LL.position;
+						vec3 npl = normalize(pl);
+						float totalLength = 0;
+						float goDown = 20;
+						for (int oo = 0; oo < objNum; oo++)
+						{
+							if (oo != objDrawn)
+							{
+								float slen;
+								float lh = objList[oo]->shadowLength(npl, LL, slen);
+								if (lh < glm::length(pl) && lh >0)
+								{
+									totalLength = totalLength + slen;
+								}
+							}
+						}
+
+						float T_s = goDown / (totalLength+goDown);
+						drawColor = T_s * drawColor + (1 - T)*objList[objDrawn]->color_dark;
+						//##########################################//
+						if(!(totalLength > eps))
+							drawColor = S * vec3(255, 255, 255) + (1 - S) *drawColor;
 						if (fabs(th - BOUNDARY) < eps)
 							drawColor = vec3(255, 0, 0);
 					}

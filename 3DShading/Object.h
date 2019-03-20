@@ -12,10 +12,12 @@ public:
 	//glm::vec3 n0;
 	glm::vec3 p0;
 	glm::vec3 color;
+	glm::vec3 color_dark;
 	int shape;
 	virtual float hit(glm::vec3 npe, glm::vec3 pe) =0;	//returns th
 	virtual float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light) = 0;
 	virtual float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light) = 0;
+	virtual float shadowLength(glm::vec3 & npl, Light light, float &ret) = 0;
 	float specularFunction(float S);
 	float diffuseFunction(float T);
 };
