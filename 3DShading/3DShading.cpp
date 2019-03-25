@@ -17,8 +17,8 @@ UCHAR pixels[SCREEN_WIDTH*SCREEN_HEIGHT * 3] = { 0 };
 
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
-vec3 LightSource = vec3(100, 0, 1000);
-double eps = 1e-5;
+vec3 LightSource = vec3(100, 100, 700);
+double eps = 1e-4;
 //###############setting objects##############//
 vec3 sphereColor = vec3(255, 0, 255);
 vec3 planeColor = vec3(0, 255, 0);
@@ -29,8 +29,10 @@ Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(125, 125, 0));
 Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -1000), vec3(0, 125, 125));
 int objNum = 0;
 vec3 LD = vec3(0, -1, 0);
-float Ltheta = 30.0*PI/180.0;
-Light LL(POINT, LightSource, LD, Ltheta);
+float Ltheta = 70.0*PI/180.0;
+Light originalLL(POINT, LightSource, LD, Ltheta);
+
+
 
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
 std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -76,6 +78,10 @@ static void windowDisplay(void)
 	vec3 n1 = glm::cross(n0, n2);
 	vec3 s0 = sCenter - n0 * (float)(cam.sx / 2.0) - n1 * (float)(cam.sy / 2.0);
 	
+	vec3 ln2 = normalize(originalLL.xd);
+	vec3 ln0 = normalize(glm::cross(ln2, originalLL.direction));
+	vec3 ln1 = glm::cross(ln0, ln2);
+	vec3 ls0 = originalLL.position - ln0 * (float)(originalLL.sx / 2.0) - ln1 * (float)(originalLL.sy / 2.0);
 
 	printf("%lf ", sp1.r);
 	printf("%lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
@@ -87,6 +93,10 @@ static void windowDisplay(void)
 			double rj = dis(gen);
 			int k = (j * SCREEN_WIDTH + i) * 3;
 			vec3 colorSum = vec3(0, 0, 0);
+
+			int il_start = (int)(M*dis(gen));
+			int jl_start = (int)(M*dis(gen));
+
 			for(int ii=0;ii<M;ii++)
 				for (int jj = 0; jj < M; jj++)
 				{
@@ -121,32 +131,83 @@ static void windowDisplay(void)
 
 					if (objDrawn >= 0)
 					{
-						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
+						Light LL = originalLL;
+						if (originalLL.type == AREA)
+						{
+							float il = ((ii + il_start)%M + ri) * 1.0 / M;
+							float jl = ((jj+jl_start)%M + rj) * 1.0 / M;
+							LL.position = ls0 + ln0 * il * originalLL.sx + ln1 * jl *originalLL.sy;
+						}
+
+						/*float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);*/
+						float T = 1;
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
 						drawColor = T * objList[objDrawn]->color + (1 - T)*objList[objDrawn]->color_dark;
 						//###############Cast Shadow################//
-						vec3 pl = cam.p + th * npe - LL.position;
+						float T_s=0;
+						int spot_flag = 0;
+						float d = 5;
+
+						vec3 ph = cam.p + th * npe;
+						vec3 n;
+						objList[objDrawn]->getNormal(ph, n);
+						vec3 ph_d = ph - d * n;
+						vec3 pl = ph_d - LL.position;
 						vec3 npl = normalize(pl);
-						float totalLength = 0;
-						float goDown = 20;
-						for (int oo = 0; oo < objNum; oo++)
+						
+
+						if (LL.type == DIR)
 						{
-							if (oo != objDrawn)
+							npl = normalize(-LL.direction);
+							LL.position = ph_d - 10000.0f * npl;
+							pl = ph_d - LL.position;
+						}
+						if (LL.type == SPOT)
+						{	
+							vec3 nL = normalize(LL.position - ph_d);
+							if ( dot(nL, LL.direction) < cos(LL.theta))
 							{
-								float slen;
-								float lh = objList[oo]->shadowLength(npl, LL, slen);
-								if (lh < glm::length(pl) && lh >0)
+								spot_flag = 1;
+							}
+						}
+						float totalLength = 0;
+						
+						float costheta = 1;
+
+						if (!spot_flag)
+						{
+							for (int oo = 0; oo < objNum; oo++)
+							{
+
+								float slen = 0;
+								float lh = objList[oo]->shadowLength(npl, LL, slen, ph_d);
+								if (lh < glm::length(pl) && fabs(lh - glm::length(pl)) > 0.1 && lh > 0)
 								{
 									totalLength = totalLength + slen;
 								}
-							}
-						}
 
-						float T_s = goDown / (totalLength+goDown);
-						drawColor = T_s * drawColor + (1 - T)*objList[objDrawn]->color_dark;
+								if (oo == objDrawn)
+								{
+									float r = glm::length(LL.position + lh * npl - ph_d);
+									costheta = d*1.0 / r;
+									costheta = (costheta + 1) / 2.0;
+								}
+							}
+
+							T_s = d / (totalLength * costheta);
+						}
+						if (T_s > 1)
+							T_s = 1;
+						if (T_s < 0)
+							T_s = 0;
+						//T_s = sqrt(T_s);
+						//T_s = sqrt(T_s);
+
+						drawColor = T_s * drawColor + (1 - T_s)*objList[objDrawn]->color_dark;
 						//##########################################//
-						if(!(totalLength > eps))
-							drawColor = S * vec3(255, 255, 255) + (1 - S) *drawColor;
+						
+						S *= T_s;
+						drawColor = S * objList[objDrawn]->color_specular + (1 - S) *drawColor;
 						if (fabs(th - BOUNDARY) < eps)
 							drawColor = vec3(255, 0, 0);
 					}
@@ -216,6 +277,10 @@ int main(int argc, char *argv[])
 	objList[objNum++] = &pl1;
 	objList[objNum++] = &pl2;
 	objList[objNum++] = &pl3;
+	originalLL.sx = 100;
+	originalLL.sy = 100;
+	originalLL.xd = vec3(0, 0, -1);
+
 	glutInit(&argc, argv);      // intialize glut package
 	glutInitWindowPosition(100, 100); // Where the window will display on-screen.
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE); // create single buffer RGB window

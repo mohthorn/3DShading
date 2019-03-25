@@ -19,53 +19,33 @@ Plane::Plane(glm::vec3 n0, glm::vec3 p0, glm::vec3 color)
 	this->p0 = p0;
 	this->color = color;
 	this->color_dark = 0.1f * color ;
-}
-
-float Plane::diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
-{
-	double T = 0;
-	if (th  > 0)
+	color_specular = 1.5f * color;
+	for (int i = 0; i < 3; i++)
 	{
-		vec3 ph = pe + th * npe;
-		vec3 n = n0;
-		vec3 nL = normalize(light.position - ph);
-
-		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
-		{
-			return 0;
-		}
-		if (light.type == DIR)
-			nL = normalize(light.direction);
-		T = dot(nL, n);
-		T = (T + 1) / 2.0;
-		return diffuseFunction(T);
+		color_specular[i] = std::max(color_specular[i], SPECTHRESHOLD);
+		if (color_specular[i] > 255)
+			color_specular[i] = 255;
 	}
-	return MISS;
 }
 
-float Plane::specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light)
+
+
+float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
 {
-	double S = 0;
-	if (th > 0)
+	if (dot(n0, p0 - light.position) > 0)
 	{
-		vec3 ph = pe + th * npe;
-		vec3 n = n0;
-		vec3 nL = normalize(light.position - ph);
-		if (light.type == SPOT && dot(nL, light.direction) < cos(light.theta))
-		{
-			return 0;
-		}
-		if (light.type == DIR)
-			nL = normalize(light.direction);
-		vec3 R = -1.0f * nL + 2.0f *(dot(nL, n)*n);
-		S = dot(R, -npe);
-		S = (S + 1) / 2.0;
-		return specularFunction(S);
+		return FAILCODE;
 	}
-	return MISS;
+	float lh = dot(n0, p0 - light.position);
+	float lh_p = (dot(n0, npl));
+	lh = lh / lh_p;
+	vec3 intersection = light.position + npl * lh;
+	ret = glm::length(intersection - ph);
+	return lh;
 }
 
-float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret)
+float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal)
 {
+	normal = n0;
 	return 0.0f;
 }
