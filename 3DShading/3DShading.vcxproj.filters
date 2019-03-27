@@ -33,6 +33,15 @@
     <ClInclude Include="Light.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\ColorData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ImageData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MemoryControl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -54,6 +63,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Light.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ImageData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

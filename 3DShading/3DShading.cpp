@@ -2,6 +2,7 @@
 //
 
 #include "pch.h"
+#include "ImageData.h"
 #define NONE -1
 #define M 1
 
@@ -13,8 +14,9 @@ static int Button = NONE;
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 900
 #define PI 3.14
-UCHAR pixels[SCREEN_WIDTH*SCREEN_HEIGHT * 3] = { 0 };
 
+using namespace glm;
+UCHAR *pixels;
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
 vec3 LightSource = vec3(100, 100, 700);
@@ -32,6 +34,7 @@ vec3 LD = vec3(0, -1, 0);
 float Ltheta = 70.0*PI/180.0;
 Light originalLL(POINT, LightSource, LD, Ltheta);
 
+ImageData texturemap("viz.jpg");
 
 
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
@@ -42,7 +45,35 @@ std::uniform_real_distribution<> dis(0, 1);
 static void init(void)
 {
 	glClearColor(1, 1, 1, 1); // Set background color.
+	pixels = new unsigned char[SCREEN_WIDTH * SCREEN_HEIGHT * 3];
 }
+
+void setPixels()
+{
+	// Example to read image, modify and display it
+	// Initialize a image instance by reading an image file
+	// Check the class file to find more construction methods
+	ImageData img("viz.jpg");
+	// Change the global variable to make display window fit the image size
+	int width = img.getWidth();
+	int height = img.getHeight();
+	// Traversal pixels in the image
+	for (int j = 0; j < height; j += 10)
+	{
+		for (int i = 0; i < width; i += 10)
+		{
+			// Get image color at position i, j
+			ColorRGBA cur_color = img.getRGBA(i, j);
+			// Change the pixel color at i, j
+			// For example, make the color half of the original value
+			img.setRGBA(i, j, cur_color * 0.5);
+		}
+	}
+	// Read color values into pixmap array
+	//img.getPixels(pixels);
+	img.writeFile("newViza.jpg");
+}
+
 
 static void windowResize(int w, int h)
 {
@@ -56,7 +87,7 @@ static void windowResize(int w, int h)
 
 static void windowDisplay(void)
 {
-
+	
 	glClear(GL_COLOR_BUFFER_BIT);
 	glRasterPos2i(0, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -131,6 +162,16 @@ static void windowDisplay(void)
 
 					if (objDrawn >= 0)
 					{
+						drawColor = objList[objDrawn]->color;
+						vec3 ph = cam.p + th * npe;
+						if (objDrawn == 1)
+						{
+							Plane* pl = (Plane*)(objList[objDrawn]);
+							glm::vec3 nt2 = pl->n0;
+							vec3 nt0 = normalize(cross(vec3(1, 1, 1), nt2));
+							vec3 nt1 = normalize(cross(nt0, nt2));
+							objList[objDrawn]->textureMapping(texturemap, ph, pl->p0, nt0, nt1, 500, 500, drawColor);
+						}
 						Light LL = originalLL;
 						if (originalLL.type == AREA)
 						{
@@ -139,16 +180,16 @@ static void windowDisplay(void)
 							LL.position = ls0 + ln0 * il * originalLL.sx + ln1 * jl *originalLL.sy;
 						}
 
-						/*float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);*/
-						float T = 1;
+						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
+						/*float T = 1;*/
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
-						drawColor = T * objList[objDrawn]->color + (1 - T)*objList[objDrawn]->color_dark;
+						drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
 						//###############Cast Shadow################//
 						float T_s=0;
 						int spot_flag = 0;
 						float d = 5;
 
-						vec3 ph = cam.p + th * npe;
+						
 						vec3 n;
 						objList[objDrawn]->getNormal(ph, n);
 						vec3 ph_d = ph - d * n;
@@ -196,6 +237,8 @@ static void windowDisplay(void)
 
 							T_s = d / (totalLength * costheta);
 						}
+						if (objDrawn == 0)
+							T_s = objList[objDrawn]->shadowFunction(T_s);
 						if (T_s > 1)
 							T_s = 1;
 						if (T_s < 0)
@@ -203,13 +246,15 @@ static void windowDisplay(void)
 						//T_s = sqrt(T_s);
 						//T_s = sqrt(T_s);
 
+
+
 						drawColor = T_s * drawColor + (1 - T_s)*objList[objDrawn]->color_dark;
 						//##########################################//
 						
 						S *= T_s;
 						drawColor = S * objList[objDrawn]->color_specular + (1 - S) *drawColor;
 						if (fabs(th - BOUNDARY) < eps)
-							drawColor = vec3(255, 0, 0);
+							drawColor = vec3(0, 0, 0);
 					}
 
 					colorSum += drawColor;
@@ -219,6 +264,10 @@ static void windowDisplay(void)
 			pixels[k + 2] =colorSum[2] / (float)(M*M);
 		}
 	glDrawPixels(SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+	
+	ImageData img(SCREEN_WIDTH, SCREEN_HEIGHT, pixels);
+
+	img.writeFile("result.jpg");
 	glFlush();
 }
 
@@ -271,6 +320,10 @@ void handleMotion(int x, int y)
 
 int main(int argc, char *argv[])
 {
+	//image test
+	setPixels();
+
+
 
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
 	objList[objNum++] = &sp1;
@@ -303,7 +356,11 @@ int main(int argc, char *argv[])
 	}
 
 	init();
+
 	glutMainLoop();  // enter main loop waiting for events
+
+
+
 
 	return 0;
 }

@@ -39,9 +39,15 @@ float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 p
 	float lh = dot(n0, p0 - light.position);
 	float lh_p = (dot(n0, npl));
 	lh = lh / lh_p;
-	vec3 intersection = light.position + npl * lh;
+	glm::vec3 intersection = light.position + npl * lh;
 	ret = glm::length(intersection - ph);
 	return lh;
+}
+
+float Plane::textureMapping(ImageData &img, glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
+{
+
+	return 0.0f;
 }
 
 float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal)

@@ -10,8 +10,9 @@
 #ifndef PCH_H
 #define PCH_H
 
-#include<GL/glew.h>
-#include<gl/freeglut.h>
+#include "GL/glew.h"
+#include "GL/glfw3.h"
+#include "GL/freeglut.h"
 #include<iostream>
 #include<string>
 #include<cstring>
@@ -27,9 +28,11 @@
 #include <cmath>
 #include "Light.h"
 #include <random>
+
+
 // TODO: add headers that you want to pre-compile here
 
 #endif //PCH_H
 
-using namespace std;
-using namespace glm;
+//using namespace std;
+//using namespace glm;

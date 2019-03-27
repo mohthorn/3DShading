@@ -1,12 +1,13 @@
 #pragma once
 #include<glm/glm.hpp>
 #include "Light.h"
+#include "ImageData.h"
 #define FAILCODE -1.0f
 #define MISS 0.0f
 #define HIT 1.0f
 #define BOUNDARY -2.0f
 #define SPECTHRESHOLD 200.0f
-using namespace glm;
+//using namespace glm;
 class MyObject
 {
 public:
@@ -21,7 +22,9 @@ public:
 	float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light) ;
 	virtual float shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 ph) = 0;
 	virtual float getNormal(glm::vec3 &ph, glm::vec3 &normal) = 0;
+	float textureMapping(ImageData &img, glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color);
 	float specularFunction(float S);
 	float diffuseFunction(float T);
+	float shadowFunction(float T_s);
 };
 
