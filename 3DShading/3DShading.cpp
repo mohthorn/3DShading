@@ -13,29 +13,35 @@ static int Button = NONE;
 
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 900
-#define PI 3.14
+
 
 using namespace glm;
+
 UCHAR *pixels;
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
-vec3 LightSource = vec3(100, 100, 700);
+vec3 LightSource = vec3(100, 100, 7000);
 double eps = 1e-4;
 //###############setting objects##############//
-vec3 sphereColor = vec3(255, 0, 255);
-vec3 planeColor = vec3(0, 255, 0);
+vec3 sphereColor = vec3(255, 255, 255);
+vec3 planeColor = vec3(255, 255, 255);
 vec3 center = vec3(0, 500, 0);
 Sphere sp1(200, sphereColor, center);
 Plane pl1(vec3(0, -1, 0), vec3(-1000, 1000, -1000), planeColor);
-Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(125, 125, 0));
-Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -1000), vec3(0, 125, 125));
+Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(255, 255, 255));
+Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -300), vec3(255, 255, 255));
+IFSphere ifsp(vec3(255,255,255));
 int objNum = 0;
 vec3 LD = vec3(0, -1, 0);
 float Ltheta = 70.0*PI/180.0;
 Light originalLL(POINT, LightSource, LD, Ltheta);
 
-ImageData texturemap("viz.jpg");
+ImageData eyeTexturemap("eye.jpg");
 
+
+ImageData wallTexturemap("seamless-cubic-stone-road-floor-texture-free-221.jpg");
+
+ImageData skyTexturemap("HDR-Day2-_1_.jpg");
 
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
 std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -95,6 +101,7 @@ static void windowDisplay(void)
 
 	//############setting camera##############//
 	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
+	/*cam.p = vec3(0, 0, 0);*/
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
@@ -142,7 +149,7 @@ static void windowDisplay(void)
 					float th = 1e9;
 					int objDrawn = -1;
 
-					//get the closest hit object
+					//###############Hit##########################
 					for (int oo = 0; oo < objNum; oo++)
 					{
 						float cur_th = objList[oo]->hit(npe, cam.p);
@@ -160,18 +167,33 @@ static void windowDisplay(void)
 						//return FAILCODE;
 					}
 
+					//########################
 					if (objDrawn >= 0)
 					{
 						drawColor = objList[objDrawn]->color;
 						vec3 ph = cam.p + th * npe;
-						if (objDrawn == 1)
+
+						//####################Texturing##################
+						if (objDrawn == 1 || objDrawn == 2 || objDrawn == 3)
 						{
 							Plane* pl = (Plane*)(objList[objDrawn]);
 							glm::vec3 nt2 = pl->n0;
-							vec3 nt0 = normalize(cross(vec3(1, 1, 1), nt2));
+							vec3 nt0 = normalize(cross(vec3(0, 0, 1), nt2));
+							if(objDrawn == 1)
+								nt0 = normalize(cross(vec3(0, 1, 0), nt2));
 							vec3 nt1 = normalize(cross(nt0, nt2));
-							objList[objDrawn]->textureMapping(texturemap, ph, pl->p0, nt0, nt1, 500, 500, drawColor);
+							objList[objDrawn]->textureMapping(ph, pl->p0, nt0, nt1, 800, 600, drawColor);
 						}
+
+						if (objDrawn == 0)
+						{
+							Sphere* pl = (Sphere*)(objList[objDrawn]);
+							glm::vec3 nt2 = n2;
+							vec3 nt0 = normalize(vec3(1,1,0));
+							vec3 nt1 = normalize(vec3(1, -1, 0));
+							pl->solidMapping(ph, pl->p0, nt0, nt1, 500, 500, drawColor);
+						}
+						//###################################
 						Light LL = originalLL;
 						if (originalLL.type == AREA)
 						{
@@ -180,14 +202,14 @@ static void windowDisplay(void)
 							LL.position = ls0 + ln0 * il * originalLL.sx + ln1 * jl *originalLL.sy;
 						}
 
-						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
+						//float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
 						/*float T = 1;*/
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
-						drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
+						//drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
 						//###############Cast Shadow################//
 						float T_s=0;
 						int spot_flag = 0;
-						float d = 5;
+						float d = 20;
 
 						
 						vec3 n;
@@ -235,18 +257,14 @@ static void windowDisplay(void)
 								}
 							}
 
-							T_s = d / (totalLength * costheta);
+							T_s = d / (totalLength/* * costheta*/);
 						}
-						if (objDrawn == 0)
-							T_s = objList[objDrawn]->shadowFunction(T_s);
+						//if (objDrawn == 0)
+						//	T_s = objList[objDrawn]->shadowFunction(T_s);
 						if (T_s > 1)
 							T_s = 1;
 						if (T_s < 0)
 							T_s = 0;
-						//T_s = sqrt(T_s);
-						//T_s = sqrt(T_s);
-
-
 
 						drawColor = T_s * drawColor + (1 - T_s)*objList[objDrawn]->color_dark;
 						//##########################################//
@@ -255,6 +273,22 @@ static void windowDisplay(void)
 						drawColor = S * objList[objDrawn]->color_specular + (1 - S) *drawColor;
 						if (fabs(th - BOUNDARY) < eps)
 							drawColor = vec3(0, 0, 0);
+					}
+					else
+					{
+						objDrawn = objNum - 1;
+						drawColor = objList[objDrawn]->color;
+						vec3 ph = npe;
+						float theta=acos(ph.z) / PI;
+						//theta = theta + 0.5;
+						float T = theta;
+						//if (theta < 0.5)
+						//	T *= 1.1;
+						//else
+						//	T = 1;
+						objList[objDrawn]->textureMapping(ph, cam.p, n0, n1, 0, 0, drawColor);
+						drawColor = T * objList[objDrawn]->color_dark + (1 - T) *drawColor;
+						
 					}
 
 					colorSum += drawColor;
@@ -323,16 +357,20 @@ int main(int argc, char *argv[])
 	//image test
 	setPixels();
 
-
-
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
 	objList[objNum++] = &sp1;
-	objList[objNum++] = &pl1;
-	objList[objNum++] = &pl2;
+	//objList[objNum++] = &pl1;
+	//objList[objNum++] = &pl2;
 	objList[objNum++] = &pl3;
+	objList[objNum++] = &ifsp;
 	originalLL.sx = 100;
 	originalLL.sy = 100;
 	originalLL.xd = vec3(0, 0, -1);
+	sp1.texture = &eyeTexturemap;
+	pl3.texture = &wallTexturemap;
+	ifsp.texture = &skyTexturemap;
+
+
 
 	glutInit(&argc, argv);      // intialize glut package
 	glutInitWindowPosition(100, 100); // Where the window will display on-screen.

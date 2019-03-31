@@ -1,5 +1,6 @@
 #pragma once
 #include<glm/glm.hpp>
+#include "ImageData.h"
 class Camera
 {
 public:
@@ -13,3 +14,10 @@ public:
 	~Camera();
 };
 
+class Projector:
+	public Camera
+{
+public:
+	ImageData * texture;
+	Projector(Camera cam);
+};

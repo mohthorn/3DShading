@@ -44,9 +44,34 @@ float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 p
 	return lh;
 }
 
-float Plane::textureMapping(ImageData &img, glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
+float Plane::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
 {
+	float x = dot(1.0f / s0 * nt0, ph - p0);
+	float y = dot(1.0f / s1 * nt1, ph - p0);
+	float u = x - (int)x;
+	if (x < 0)
+		u = 1 + u;
+	float v = y - (int)y;
+	if (y < 0)
+		v = 1 + v;
+	float width = texture->getWidth();
+	float height = texture->getHeight();
 
+	int u_i = floor(u*width);
+	int v_i = floor(v*height);
+	if (u_i >= width)
+		u_i = width - 1;
+	if (v_i >= height)
+		v_i = height - 1;
+	if (u_i < 0)
+		u_i = 0;
+	if (v_i < 0)
+		v_i = 0;
+	u_i = width - 1 - u_i;
+
+	ColorRGBA clr = texture->getRGBA(u_i, v_i);
+
+	ret_color = glm::vec3(clr.r * 255, clr.g * 255, clr.b * 255);
 	return 0.0f;
 }
 

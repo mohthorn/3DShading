@@ -28,7 +28,7 @@ float Sphere::hit(glm::vec3 npe, glm::vec3 pe)
 float Sphere::shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 ph)
 {
 	glm::vec3 pl = p0 - light.position;
-	glm::vec3 n = normalize(ph - p0);
+	glm::vec3 n = glm::normalize(ph - p0);
 	float b = fabs(dot(npl, pl));
 	float c = dot(pl, pl) - r * r;
 	float result = b * b - c;
@@ -49,14 +49,102 @@ float Sphere::shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 p
 
 float Sphere::getNormal(glm::vec3 &ph, glm::vec3 &normal)
 {
-	normal = normalize(ph - p0);
+	normal = glm::normalize(ph - p0);
 	return 0.0f;
 }
 
-float Sphere::textureMapping(ImageData &img, glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
+float Sphere::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
 {
+	using namespace glm;
+	vec3 nt2 = cross(nt0, nt1);
+	float x = dot(1.0f / r * nt0, ph - p0);
+	float y = dot(1.0f / r * nt1, ph - p0);
+	float z = dot(1.0f / r * nt2, ph - p0);
+	
+	vec3 nph = normalize(vec3(x, y, z));
+	float v = acos(nph.z) / PI;
+	float cu = nph.y*1.0 / sqrt(1 - nph.z*nph.z);
+	float u = acos(cu) / (2.0*PI);
+	if (nph.x < 0)
+	{
+		u = 1 - u;
+	}
+
+	v = 1 - v;
+
+	//float v = nph.z*0.5 + 0.5;
+	//float u = nph.x*0.5 + 0.5;
+
+
+	float width = texture->getWidth();
+	float height = texture->getHeight();
+
+	int u_i = floor(u*width);
+	int v_i = floor(v*height);
+	if (u_i >= width)
+		u_i = width - 1;
+	if (v_i >= height)
+		v_i = height - 1;
+
+	if (u_i < 0)
+		u_i = 0;
+	if (v_i <0)
+		v_i = 0;
+	/*u_i = width - 1 - u_i;*/
+
+	ColorRGBA clr = texture->getRGBA(u_i, v_i);
+
+	ret_color = glm::vec3(clr.r * 255, clr.g * 255, clr.b * 255);
 	return 0.0f;
 }
+
+float Sphere::solidMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm::vec3 & nt1, float s0, float s1, glm::vec3 & ret_color)
+{
+	using namespace glm;
+	vec3 nt2 = normalize(cross(nt0, nt1));
+	float x = dot(1.0f / r * nt0, ph - p0);
+	float y = dot(1.0f / r * nt1, ph - p0);
+	float z = dot(1.0f / r * nt2, ph - p0);
+
+	vec3 nph = normalize(vec3(x, y, z));
+	//float v = acos(nph.z) / PI;
+	//float cu = nph.y*1.0 / sqrt(1 - nph.z*nph.z);
+	//float u = acos(cu) / (2.0*PI);
+	//if (nph.x < 0)
+	//{
+	//	u = 1 - u;
+	//}
+
+	//v = 1 - v;
+
+	float v = nph.z*0.5 + 0.5;
+	float u = nph.x*0.5 + 0.5;
+
+
+
+	float width = texture->getWidth();
+	float height = texture->getHeight();
+
+	int u_i = floor(u*width);
+	int v_i = floor(v*height);
+	if (u_i >= width)
+		u_i = width - 1;
+	if (v_i >= height)
+		v_i = height - 1;
+
+	if (u_i < 0)
+		u_i = 0;
+	if (v_i < 0)
+		v_i = 0;
+	/*u_i = width - 1 - u_i;*/
+
+	ColorRGBA clr = texture->getRGBA(u_i, v_i);
+
+	ret_color = glm::vec3(clr.r * 255, clr.g * 255, clr.b * 255);
+	return 0.0f;
+}
+
+
 
 
 Sphere::Sphere()
@@ -80,5 +168,75 @@ Sphere::Sphere(float nr, glm::vec3 ncolor, glm::vec3 np0)
 
 
 Sphere::~Sphere()
+{
+}
+
+float IFSphere::hit(glm::vec3 npe, glm::vec3 pe)
+{
+	return 0.0f;
+}
+
+float IFSphere::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
+{
+	return 0.0f;
+}
+
+float IFSphere::getNormal(glm::vec3 & ph, glm::vec3 & normal)
+{
+	normal = normalize(ph);
+	return 0.0f;
+}
+
+float IFSphere::textureMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm::vec3 & nt1, float s0, float s1, glm::vec3 & ret_color)
+{
+	using namespace glm;
+	vec3 nph = ph;
+	float v = acos(nph.z) / PI;
+	float cu = nph.y*1.0 / sqrt(1 - nph.z*nph.z);
+	float u = acos(cu) / (2.0*PI);
+	if (nph.x < 0)
+	{
+		u = 1 - u;
+	}
+
+	v = 1 - v;
+
+	//float v = nph.z*0.5 + 0.5;
+	//float u = nph.x*0.5 + 0.5;
+
+	float width = texture->getWidth();
+	float height = texture->getHeight();
+
+
+	int u_i = floor(u*width);
+	int v_i = floor(v*height);
+	if (u_i >= width)
+		u_i = floor(width - 1);
+	if (v_i >= height)
+		v_i = floor(height - 1);
+
+	if (u_i < 0)
+		u_i = 0;
+	if (v_i < 0)
+		v_i = 0;
+	/*u_i = width - 1 - u_i;*/
+
+	ColorRGBA clr = texture->getRGBA(u_i, v_i);
+
+	ret_color = glm::vec3(clr.r * 255, clr.g * 255, clr.b * 255);
+	return 0.0f;
+}
+
+IFSphere::IFSphere()
+{
+}
+
+IFSphere::IFSphere(glm::vec3 color)
+{
+	this->color = color;
+	this->color_dark = 0.1f * color;
+}
+
+IFSphere::~IFSphere()
 {
 }

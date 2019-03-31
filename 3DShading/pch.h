@@ -23,11 +23,12 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Camera.h"
 #include "Sphere.h"
-#include "Object.h";
+#include "Object.h"
 #include "Plane.h"
 #include <cmath>
 #include "Light.h"
 #include <random>
+
 
 
 // TODO: add headers that you want to pre-compile here
