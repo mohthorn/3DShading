@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "ImageData.h"
 #define NONE -1
-#define M 1
+#define M 4
 
 int Main_Window;
 static int MouseX;
@@ -21,7 +21,16 @@ UCHAR *pixels;
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
 vec3 LightSource = vec3(100, 100, 7000);
-double eps = 1e-4;
+vec3 LD = vec3(0, -1, 0);
+float Ltheta = 70.0*PI / 180.0;
+Light originalLL(POINT, LightSource, LD, Ltheta);
+
+//##############Projector################
+ImageData projectTexture("viz.jpg");
+Projector pr1(vec3(0,500,1000),vec3(0,0,-1),vec3(0,1,0),10,20,20,&projectTexture);
+
+//######################################
+
 //###############setting objects##############//
 vec3 sphereColor = vec3(255, 255, 255);
 vec3 planeColor = vec3(255, 255, 255);
@@ -32,17 +41,16 @@ Plane pl2(vec3(1, 0, 0), vec3(-1000, 1000, -1000), vec3(255, 255, 255));
 Plane pl3(vec3(0, 0, 1), vec3(-1000, 1000, -300), vec3(255, 255, 255));
 IFSphere ifsp(vec3(255,255,255));
 int objNum = 0;
-vec3 LD = vec3(0, -1, 0);
-float Ltheta = 70.0*PI/180.0;
-Light originalLL(POINT, LightSource, LD, Ltheta);
 
+
+//############Texture Maps##########
 ImageData eyeTexturemap("eye.jpg");
 
 
 ImageData wallTexturemap("seamless-cubic-stone-road-floor-texture-free-221.jpg");
 
 ImageData skyTexturemap("HDR-Day2-_1_.jpg");
-
+//#################################
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
 std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
 std::uniform_real_distribution<> dis(0, 1);
@@ -101,13 +109,13 @@ static void windowDisplay(void)
 
 	//############setting camera##############//
 	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
-	/*cam.p = vec3(0, 0, 0);*/
+	/*cam.p = vec3(341, 0, 347);*/
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
 	cam.sy = 10;
 	cam.d = 5;
-	printf("%lf,%lf,%lf", cam.p[0], cam.p[1], cam.p[2]);
+	printf("Camera: %lf,%lf,%lf\n", cam.p[0], cam.p[1], cam.p[2]);
 
 	vec3 sCenter = cam.p + normalize(cam.v0) * (float)cam.d;
 
@@ -115,14 +123,30 @@ static void windowDisplay(void)
 	vec3 n0 = normalize(glm::cross(n2, cam.vUp));
 	vec3 n1 = glm::cross(n0, n2);
 	vec3 s0 = sCenter - n0 * (float)(cam.sx / 2.0) - n1 * (float)(cam.sy / 2.0);
-	
+	//###################################
+
+	//#############Setting Projector################
+
+	vec3 pCenter = pr1.p + normalize(pr1.v0)*(float)pr1.d;
+
+	vec3 pn2 = normalize(pr1.v0);
+	vec3 pn0 = normalize(cross(pn2, pr1.vUp));
+	vec3 pn1 = cross(pn0, pn2);
+	vec3 ps0 = pCenter - pn0 * (float)(pr1.sx / 2.0) - pn1 * (float)(pr1.sy / 2.0);
+
+	//###############################
+
+
+	//#########################Setting Light###################
 	vec3 ln2 = normalize(originalLL.xd);
 	vec3 ln0 = normalize(glm::cross(ln2, originalLL.direction));
 	vec3 ln1 = glm::cross(ln0, ln2);
 	vec3 ls0 = originalLL.position - ln0 * (float)(originalLL.sx / 2.0) - ln1 * (float)(originalLL.sy / 2.0);
+	//###################################
 
-	printf("%lf ", sp1.r);
-	printf("%lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
+	//printf("Sphere: %lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
+	
+	double eps = 1e-4;
 
 	for (int j = SCREEN_HEIGHT - 1; j >= 0; j--)
 		for (int i = 0; i < SCREEN_WIDTH; i++)
@@ -194,6 +218,16 @@ static void windowDisplay(void)
 							pl->solidMapping(ph, pl->p0, nt0, nt1, 500, 500, drawColor);
 						}
 						//###################################
+
+						//#################Projecting########################
+
+						glm::vec3 pColor;
+						
+						int projected = pr1.projectColor(pn0, pn1, pn2, ph, pColor);
+
+						if(projected)
+							drawColor = 0.8f * pColor + 0.2f * drawColor;
+						//##############################################
 						Light LL = originalLL;
 						if (originalLL.type == AREA)
 						{
@@ -202,10 +236,12 @@ static void windowDisplay(void)
 							LL.position = ls0 + ln0 * il * originalLL.sx + ln1 * jl *originalLL.sy;
 						}
 
+						//##################Diffusing & Specular Highlight####################
 						//float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
 						/*float T = 1;*/
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
 						//drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
+
 						//###############Cast Shadow################//
 						float T_s=0;
 						int spot_flag = 0;
@@ -276,6 +312,7 @@ static void windowDisplay(void)
 					}
 					else
 					{
+					//######################Environment Map##########
 						objDrawn = objNum - 1;
 						drawColor = objList[objDrawn]->color;
 						vec3 ph = npe;
@@ -288,7 +325,7 @@ static void windowDisplay(void)
 						//	T = 1;
 						objList[objDrawn]->textureMapping(ph, cam.p, n0, n1, 0, 0, drawColor);
 						drawColor = T * objList[objDrawn]->color_dark + (1 - T) *drawColor;
-						
+					//#########################################
 					}
 
 					colorSum += drawColor;
@@ -359,7 +396,7 @@ int main(int argc, char *argv[])
 
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
 	objList[objNum++] = &sp1;
-	//objList[objNum++] = &pl1;
+	/*objList[objNum++] = &pl1;*/
 	//objList[objNum++] = &pl2;
 	objList[objNum++] = &pl3;
 	objList[objNum++] = &ifsp;
@@ -367,6 +404,7 @@ int main(int argc, char *argv[])
 	originalLL.sy = 100;
 	originalLL.xd = vec3(0, 0, -1);
 	sp1.texture = &eyeTexturemap;
+	//pl1.texture = &wallTexturemap;
 	pl3.texture = &wallTexturemap;
 	ifsp.texture = &skyTexturemap;
 
@@ -396,9 +434,6 @@ int main(int argc, char *argv[])
 	init();
 
 	glutMainLoop();  // enter main loop waiting for events
-
-
-
 
 	return 0;
 }

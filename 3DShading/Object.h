@@ -28,6 +28,5 @@ public:
 	float specularFunction(float S);
 	float diffuseFunction(float T);
 	float shadowFunction(float T_s);
-
 };
 
