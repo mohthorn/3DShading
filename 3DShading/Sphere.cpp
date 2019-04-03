@@ -49,8 +49,52 @@ float Sphere::shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 p
 
 float Sphere::getNormal(glm::vec3 &ph, glm::vec3 &normal)
 {
+	using namespace glm;
 	normal = glm::normalize(ph - p0);
-	return 0.0f;
+	if(normalMap == NULL)
+		return 0.0f;
+	else
+	{
+		glm::vec3 nph = normal;
+		float v = acos(nph.z) / PI;
+		float cu = nph.y*1.0 / sqrt(1 - nph.z*nph.z);
+		float u = acos(cu) / (2.0*PI);
+		if (nph.x < 0)
+		{
+			u = 1 - u;
+		}
+
+		v = 1 - v;
+
+		float width = normalMap->getWidth();
+		float height = normalMap->getHeight();
+
+		int u_i = floor(u*width);
+		int v_i = floor(v*height);
+		if (u_i >= width)
+			u_i = width - 1;
+		if (v_i >= height)
+			v_i = height - 1;
+
+		if (u_i < 0)
+			u_i = 0;
+		if (v_i < 0)
+			v_i = 0;
+		/*u_i = width - 1 - u_i;*/
+		//float v = nph.z*0.5 + 0.5;
+		//float u = nph.x*0.5 + 0.5;
+
+		ColorRGBA clr = normalMap->getRGBA(u_i, v_i);
+
+		vec3 newNormal = glm::normalize(vec3(2*clr.r-1, 2*clr.g-1, clr.b));
+		
+		vec3 nt0 = normalize(northPole);
+		vec3 nt2 = normalize(normal);
+		vec3 nt1 = normalize(cross(nt2, nt0));
+		nt0 = normalize(cross(nt1, nt2));
+
+		normal = normalize(nt1*newNormal.x + nt0*newNormal.y+nt2* newNormal.z);
+	}
 }
 
 float Sphere::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
@@ -145,8 +189,6 @@ float Sphere::solidMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm:
 }
 
 
-
-
 Sphere::Sphere()
 {
 }
@@ -164,6 +206,7 @@ Sphere::Sphere(float nr, glm::vec3 ncolor, glm::vec3 np0)
 		if (color_specular[i] > 255)
 			color_specular[i] = 255;
 	}
+	normalMap = NULL;
 }
 
 

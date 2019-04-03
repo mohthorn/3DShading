@@ -2,6 +2,7 @@
 #include<glm/glm.hpp>
 #include "Light.h"
 #include "ImageData.h"
+
 #define FAILCODE -1.0f
 #define MISS 0.0f
 #define HIT 1.0f
@@ -18,6 +19,7 @@ public:
 	glm::vec3 color_dark;
 	glm::vec3 color_specular;
 	ImageData *texture;
+	ImageData *normalMap;
 	int shape;
 	virtual float hit(glm::vec3 npe, glm::vec3 pe) =0;	//returns th
 	float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);

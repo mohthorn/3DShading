@@ -7,6 +7,7 @@ class Sphere :
 {
 public:
 	float r;
+	glm::vec3 northPole;
 	float hit(glm::vec3 npe, glm::vec3 pe);
 	//float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);
 	//float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);

@@ -20,7 +20,7 @@ using namespace glm;
 UCHAR *pixels;
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
-vec3 LightSource = vec3(100, 100, 7000);
+vec3 LightSource = vec3(0, 500, 1000);
 vec3 LD = vec3(0, -1, 0);
 float Ltheta = 70.0*PI / 180.0;
 Light originalLL(POINT, LightSource, LD, Ltheta);
@@ -110,6 +110,7 @@ static void windowDisplay(void)
 	//############setting camera##############//
 	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
 	/*cam.p = vec3(341, 0, 347);*/
+	cam.p = vec3(2000, 2000, 2000);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
@@ -219,15 +220,7 @@ static void windowDisplay(void)
 						}
 						//###################################
 
-						//#################Projecting########################
 
-						glm::vec3 pColor;
-						
-						int projected = pr1.projectColor(pn0, pn1, pn2, ph, pColor);
-
-						if(projected)
-							drawColor = 0.8f * pColor + 0.2f * drawColor;
-						//##############################################
 						Light LL = originalLL;
 						if (originalLL.type == AREA)
 						{
@@ -301,6 +294,16 @@ static void windowDisplay(void)
 							T_s = 1;
 						if (T_s < 0)
 							T_s = 0;
+
+						//#################Projecting########################
+
+						//glm::vec3 pColor;
+
+						//int projected = pr1.projectColor(pn0, pn1, pn2, ph, pColor);
+
+						//if (projected && T_s >0.2)
+						//	drawColor = 0.8f * pColor + 0.2f * drawColor;
+						//##############################################
 
 						drawColor = T_s * drawColor + (1 - T_s)*objList[objDrawn]->color_dark;
 						//##########################################//
@@ -399,17 +402,23 @@ int main(int argc, char *argv[])
 	/*objList[objNum++] = &pl1;*/
 	//objList[objNum++] = &pl2;
 	objList[objNum++] = &pl3;
-	objList[objNum++] = &ifsp;
+
 	originalLL.sx = 100;
 	originalLL.sy = 100;
 	originalLL.xd = vec3(0, 0, -1);
 	sp1.texture = &eyeTexturemap;
+	ImageData spN("12759-normal.jpg");
+	sp1.normalMap = &spN;
+	sp1.northPole = vec3(0, 0, 1);
 	//pl1.texture = &wallTexturemap;
 	pl3.texture = &wallTexturemap;
 	ifsp.texture = &skyTexturemap;
 
+	char file[100] = "cube.obj";
+	ObjFromFile cube(file);
+	objList[objNum++] = &cube;
 
-
+	objList[objNum++] = &ifsp;
 	glutInit(&argc, argv);      // intialize glut package
 	glutInitWindowPosition(100, 100); // Where the window will display on-screen.
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE); // create single buffer RGB window
