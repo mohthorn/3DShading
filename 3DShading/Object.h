@@ -10,6 +10,31 @@
 #define SPECTHRESHOLD 200.0f
 #define PI 3.14
 //using namespace glm;
+
+class spSet
+{
+public:
+	glm::vec3 ph;
+	float u;
+	float v;
+	int hitNum;
+};
+
+class Ray
+{
+public:
+	glm::vec3 v;
+	glm::vec3 p;
+};
+
+class FresnelSet
+{
+public:
+	Ray rf;	//reflected ray
+	Ray rt;	//refracted ray
+	glm::vec3 color;
+};
+
 class MyObject
 {
 public:
@@ -20,15 +45,23 @@ public:
 	glm::vec3 color_specular;
 	ImageData *texture;
 	ImageData *normalMap;
+	glm::vec3 txP0;
+	glm::vec3 nt0;
+	glm::vec3 nt1;
+	float s0;
+	float s1;
 	int shape;
-	virtual float hit(glm::vec3 npe, glm::vec3 pe) =0;	//returns th
-	float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light);
-	float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light) ;
+	virtual float hit(glm::vec3 npe, glm::vec3 pe, spSet &sp) =0;	//returns th
+	float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light, spSet &sp);
+	float specular(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light, spSet &sp) ;
 	virtual float shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 ph) = 0;
-	virtual float getNormal(glm::vec3 &ph, glm::vec3 &normal) = 0;
-	virtual float textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color) =0 ;
+	virtual float getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp) = 0;
+	virtual float textureMapping(glm::vec3& ph, glm::vec3 &ret_color, spSet &sp) =0 ;
+	float fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs);
 	float specularFunction(float S);
 	float diffuseFunction(float T);
 	float shadowFunction(float T_s);
 };
+
+
 

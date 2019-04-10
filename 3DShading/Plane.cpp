@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Plane.h"
 
-float Plane::hit(glm::vec3 npe, glm::vec3 pe)
+float Plane::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	if (dot(n0, p0 - pe) > 0)
 	{
@@ -45,10 +45,10 @@ float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 p
 	return lh;
 }
 
-float Plane::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
+float Plane::textureMapping(glm::vec3& ph , glm::vec3 &ret_color, spSet &sp)
 {
-	float x = dot(1.0f / s0 * nt0, ph - p0);
-	float y = dot(1.0f / s1 * nt1, ph - p0);
+	float x = dot(1.0f / s0 * nt0, ph - txP0);
+	float y = dot(1.0f / s1 * nt1, ph - txP0);
 	float u = x - (int)x;
 	if (x < 0)
 		u = 1 + u;
@@ -76,7 +76,7 @@ float Plane::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::v
 	return 0.0f;
 }
 
-float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal)
+float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp)
 {
 	normal = n0;
 	return 0.0f;
@@ -123,9 +123,15 @@ ObjFromFile::ObjFromFile(char * filename)
 	CloseHandle(hFile);
 	//*****************************
 	vertices = new glm::vec3[INITIAL_BUFFER];
+	texturePoints = new glm::vec2[INITIAL_BUFFER];
+	normalPoints = new glm::vec3[INITIAL_BUFFER];
 	tuples = new tuple<int, int, int>[INITIAL_BUFFER];
+	texTuple = new tuple<int, int, int>[INITIAL_BUFFER];
+	normTuple = new tuple<int, int, int>[INITIAL_BUFFER];
 	vNum = 0;
 	tNum = 0;
+	texNum = 0;
+	normNum = 0;
 	fileBuf[fileSize] = 0;
 	printf("Opened %s with size %d\n", filename, fileSize);
 	char * pStart = fileBuf;
@@ -143,6 +149,18 @@ ObjFromFile::ObjFromFile(char * filename)
 				sscanf(pStart + 1, "%f%f%f", &x, &y, &z);
 				vertices[vNum++] = glm::vec3(x, y, z);
 			}
+			if (*(pStart + 1) == 't')
+			{
+				float x, y, z;
+				sscanf(pStart + 2, "%f%f", &x, &y);
+				texturePoints[texNum++] = glm::vec2(x, y);
+			}
+			if (*(pStart + 1) == 'n')
+			{
+				float x, y, z;
+				sscanf(pStart + 2, "%f%f%f", &x, &y, &z);
+				normalPoints[normNum++] = glm::vec3(x, y, z);
+			}
 		}
 		if (*pStart == 'f')
 		{
@@ -154,10 +172,17 @@ ObjFromFile::ObjFromFile(char * filename)
 			{
 				while (*pStart == ' ')
 					pStart++;
-				sscanf(pStart, "%d/%d/%d", &x[i][0], &x[i][1], &x[i][2]);
+				char* slash = strchr(pStart, '/');
+				if(slash !=NULL)
+					sscanf(pStart, "%d/%d/%d", &x[i][0], &x[i][1], &x[i][2]);
+				else
+					sscanf(pStart, "%d%d%d", &x[i][0], &x[i][1], &x[i][2]);
 				pStart = strchr(pStart, ' ');
 			}
+			texTuple[tNum] = make_tuple(x[0][1], x[1][1], x[2][1]);
+			normTuple[tNum] = make_tuple(x[0][2], x[1][2], x[2][2]);
 			tuples[tNum++] = make_tuple(x[0][0], x[1][0], x[2][0]);
+			
 		}
 		pStart = pEnd + 1;
 		while (*pStart == '\n')
@@ -173,23 +198,32 @@ ObjFromFile::ObjFromFile(char * filename)
 	{
 		printf("%d, %d, %d\n", get<0>(tuples[i]), get<1>(tuples[i]), get<2>(tuples[i]));
 	}
-	
+	for (int i = 0; i < texNum; i++)
+	{
+		printf("%f, %f\n", texturePoints[i].x, texturePoints[i].y);
+	}
+	for (int i = 0; i < normNum; i++)
+	{
+		printf("%f, %f, %f\n", normalPoints[i].x, normalPoints[i].y, normalPoints[i].z);
+	}
 	color = glm::vec3(255, 255, 0);
 	color_dark = 0.1f*color;
+	color_specular= glm::vec3(255, 255, 255);
 }
 
-float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe)
+float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	using namespace glm;
 	float th_min = 1e8;
 	int triDrawn;
 	float eps = 1e-4;
 	bool isHit=FALSE;
+	vec3 v0, v1, v2;
 	for (int i = 0; i < tNum; i++)
 	{
-		vec3 v0 = vertices[get<0>(tuples[i%tNum])-1];
-		vec3 v1 = vertices[get<1>(tuples[i%tNum])-1];
-		vec3 v2 = vertices[get<2>(tuples[i%tNum])-1];
+		v0 = vertices[get<0>(tuples[i%tNum])-1];
+		v1 = vertices[get<1>(tuples[i%tNum])-1];
+		v2 = vertices[get<2>(tuples[i%tNum])-1];
 
 		vec3 v01 = v1 - v0;
 		vec3 v12 = v2 - v1;
@@ -197,7 +231,7 @@ float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe)
 		vec3 nt0 = normalize(cross(v01, v12));
 		
 		Plane pt(nt0, v0, color);
-		float th = pt.hit(npe, pe);
+		float th = pt.hit(npe, pe,sp);
 		
 		if (th > 0)
 		{
@@ -220,12 +254,18 @@ float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe)
 				{
 					isHit = TRUE;
 					th_min = th;
+					sp.hitNum = i;
+					sp.u = u;
+					sp.v = v;
 					triDrawn = tNum;
 				}
 		}
 	}
-	if(isHit)
+	if (isHit)
+	{
 		return th_min;
+	}
+		
 	return MISS;
 }
 
@@ -234,12 +274,39 @@ float ObjFromFile::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::
 	return 0.0f;
 }
 
-float ObjFromFile::textureMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm::vec3 & nt1, float s0, float s1, glm::vec3 & ret_color)
+float ObjFromFile::textureMapping(glm::vec3 & ph, glm::vec3 & ret_color, spSet &sp)
 {
+	//if (get<0>(texTuple[sp.hitNum%tNum]) == 3)
+	//{
+	//	int a = 0;
+	//}
+	//glm::vec2 v0 = texturePoints[get<0>(texTuple[sp.hitNum%tNum]) - 1];
+	//glm::vec2 v1 = texturePoints[get<1>(texTuple[sp.hitNum%tNum]) - 1];
+	//glm::vec2 v2 = texturePoints[get<2>(texTuple[sp.hitNum%tNum]) - 1];
+
+	//glm::vec2 tp = (1-sp.u-sp.v)*v0+ v1* sp.u +  v2* sp.v;
+	//int width = texture->getWidth();
+	//int height = texture->getHeight();
+	//int u_i = floor(width* tp.x);
+	//int v_i = floor(height * tp.y);
+	//if (u_i >= width)
+	//	u_i = width - 1;
+	//if (v_i >= height)
+	//	v_i = height - 1;
+	//if (u_i < 0)
+	//	u_i = 0;
+	//if (v_i < 0)
+	//	v_i = 0;
+	//ColorRGBA clr = texture->getRGBA((int)u_i, (int)v_i);
+	//ret_color = glm::vec3(clr.r*255, clr.g*255, clr.b*255);
 	return 0.0f;
 }
 
-float ObjFromFile::getNormal(glm::vec3 & ph, glm::vec3 & normal)
+float ObjFromFile::getNormal(glm::vec3 & ph, glm::vec3 & normal, spSet &sp)
 {
+	glm::vec3 n0 = vertices[get<1>(tuples[sp.hitNum%tNum])-1] - vertices[get<0>(tuples[sp.hitNum%tNum])-1];
+	glm::vec3 n1 = vertices[get<2>(tuples[sp.hitNum%tNum])-1] - vertices[get<1>(tuples[sp.hitNum%tNum])-1];
+	normal = cross(n0, n1);
+	normal = normalize(normal);
 	return 0.0f;
 }
