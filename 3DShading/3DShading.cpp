@@ -110,7 +110,7 @@ static void windowDisplay(void)
 	//############setting camera##############//
 	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
 	/*cam.p = vec3(341, 0, 347);*/
-	cam.p = vec3(2000, 2000, 2000);
+	cam.p = vec3(348, 0, -20);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
@@ -152,6 +152,7 @@ static void windowDisplay(void)
 	for (int j = SCREEN_HEIGHT - 1; j >= 0; j--)
 		for (int i = 0; i < SCREEN_WIDTH; i++)
 		{	
+			spSet shdingPointSet;
 			double ri = dis(gen);
 			double rj = dis(gen);
 			int k = (j * SCREEN_WIDTH + i) * 3;
@@ -177,7 +178,7 @@ static void windowDisplay(void)
 					//###############Hit##########################
 					for (int oo = 0; oo < objNum; oo++)
 					{
-						float cur_th = objList[oo]->hit(npe, cam.p);
+						float cur_th = objList[oo]->hit(npe, cam.p, shdingPointSet);
 						if (cur_th < th && (cur_th > 0 || fabs(cur_th - BOUNDARY) < eps))
 						{
 							th = cur_th;
@@ -198,25 +199,35 @@ static void windowDisplay(void)
 						drawColor = objList[objDrawn]->color;
 						vec3 ph = cam.p + th * npe;
 
-						//####################Texturing##################
+						//####################Texturing & reflecting##################
 						if (objDrawn == 1 || objDrawn == 2 || objDrawn == 3)
 						{
 							Plane* pl = (Plane*)(objList[objDrawn]);
 							glm::vec3 nt2 = pl->n0;
-							vec3 nt0 = normalize(cross(vec3(0, 0, 1), nt2));
+							pl->nt0 = normalize(cross(vec3(0, 0, 1), nt2));
 							if(objDrawn == 1)
-								nt0 = normalize(cross(vec3(0, 1, 0), nt2));
-							vec3 nt1 = normalize(cross(nt0, nt2));
-							objList[objDrawn]->textureMapping(ph, pl->p0, nt0, nt1, 800, 600, drawColor);
+								pl->nt0 = normalize(cross(vec3(0, 1, 0), nt2));
+							pl->nt1 = normalize(cross(pl->nt0, nt2));
+							pl->s0 = 800;
+							pl->s1 = 600;
+							pl->txP0 = pl->p0;
+							objList[objDrawn]->textureMapping(ph, drawColor, shdingPointSet);
 						}
 
 						if (objDrawn == 0)
 						{
-							Sphere* pl = (Sphere*)(objList[objDrawn]);
+							Sphere* spt = (Sphere*)(objList[objDrawn]);
 							glm::vec3 nt2 = n2;
-							vec3 nt0 = normalize(vec3(1,1,0));
-							vec3 nt1 = normalize(vec3(1, -1, 0));
-							pl->solidMapping(ph, pl->p0, nt0, nt1, 500, 500, drawColor);
+							spt->nt0 = normalize(vec3(1,1,0));
+							spt->nt1 = normalize(vec3(1, -1, 0));
+							spt->solidMapping(ph, drawColor);
+							
+							FresnelSet fs;
+							Ray income;
+							income.v = npe;
+							income.p = cam.p;
+							spt->fresnel(ph, objList, objNum, income, fs);
+							drawColor = fs.color;
 						}
 						//###################################
 
@@ -232,8 +243,14 @@ static void windowDisplay(void)
 						//##################Diffusing & Specular Highlight####################
 						//float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
 						/*float T = 1;*/
-						float S = objList[objDrawn]->specular(npe, cam.p, th, LL);
+						float S = objList[objDrawn]->specular(npe, cam.p, th, LL,shdingPointSet);
 						//drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
+
+
+
+
+
+
 
 						//###############Cast Shadow################//
 						float T_s=0;
@@ -242,7 +259,7 @@ static void windowDisplay(void)
 
 						
 						vec3 n;
-						objList[objDrawn]->getNormal(ph, n);
+						objList[objDrawn]->getNormal(ph, n, shdingPointSet);
 						vec3 ph_d = ph - d * n;
 						vec3 pl = ph_d - LL.position;
 						vec3 npl = normalize(pl);
@@ -326,7 +343,7 @@ static void windowDisplay(void)
 						//	T *= 1.1;
 						//else
 						//	T = 1;
-						objList[objDrawn]->textureMapping(ph, cam.p, n0, n1, 0, 0, drawColor);
+						objList[objDrawn]->textureMapping(ph, drawColor, shdingPointSet);
 						drawColor = T * objList[objDrawn]->color_dark + (1 - T) *drawColor;
 					//#########################################
 					}
@@ -409,14 +426,17 @@ int main(int argc, char *argv[])
 	sp1.texture = &eyeTexturemap;
 	ImageData spN("12759-normal.jpg");
 	sp1.normalMap = &spN;
+	sp1.normalMap = NULL;
 	sp1.northPole = vec3(0, 0, 1);
 	//pl1.texture = &wallTexturemap;
 	pl3.texture = &wallTexturemap;
 	ifsp.texture = &skyTexturemap;
 
-	char file[100] = "cube.obj";
-	ObjFromFile cube(file);
-	objList[objNum++] = &cube;
+	//ImageData vizimage("viz.jpg");
+	//char file[100] = "humanoid_tri.obj";
+	//ObjFromFile cube(file);
+	//cube.texture = &vizimage;
+	//objList[objNum++] = &cube;
 
 	objList[objNum++] = &ifsp;
 	glutInit(&argc, argv);      // intialize glut package

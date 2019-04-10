@@ -4,7 +4,7 @@
 
 
 
-float Sphere::hit(glm::vec3 npe, glm::vec3 pe)
+float Sphere::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	float b = fabs(dot(npe, p0 - pe));
 	float c = dot(p0 - pe, p0 - pe) - r * r;
@@ -47,7 +47,7 @@ float Sphere::shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 p
 	return lh;
 }
 
-float Sphere::getNormal(glm::vec3 &ph, glm::vec3 &normal)
+float Sphere::getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp)
 {
 	using namespace glm;
 	normal = glm::normalize(ph - p0);
@@ -97,7 +97,7 @@ float Sphere::getNormal(glm::vec3 &ph, glm::vec3 &normal)
 	}
 }
 
-float Sphere::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::vec3 &nt1, float s0, float s1, glm::vec3 &ret_color)
+float Sphere::textureMapping(glm::vec3& ph, glm::vec3 &ret_color, spSet &sp)
 {
 	using namespace glm;
 	vec3 nt2 = cross(nt0, nt1);
@@ -142,7 +142,7 @@ float Sphere::textureMapping(glm::vec3& ph, glm::vec3 &p0, glm::vec3 &nt0, glm::
 	return 0.0f;
 }
 
-float Sphere::solidMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm::vec3 & nt1, float s0, float s1, glm::vec3 & ret_color)
+float Sphere::solidMapping(glm::vec3 & ph, glm::vec3 & ret_color)
 {
 	using namespace glm;
 	vec3 nt2 = normalize(cross(nt0, nt1));
@@ -214,7 +214,7 @@ Sphere::~Sphere()
 {
 }
 
-float IFSphere::hit(glm::vec3 npe, glm::vec3 pe)
+float IFSphere::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	return 0.0f;
 }
@@ -224,13 +224,13 @@ float IFSphere::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec
 	return 0.0f;
 }
 
-float IFSphere::getNormal(glm::vec3 & ph, glm::vec3 & normal)
+float IFSphere::getNormal(glm::vec3 & ph, glm::vec3 & normal, spSet &sp)
 {
 	normal = normalize(ph);
 	return 0.0f;
 }
 
-float IFSphere::textureMapping(glm::vec3 & ph, glm::vec3 & p0, glm::vec3 & nt0, glm::vec3 & nt1, float s0, float s1, glm::vec3 & ret_color)
+float IFSphere::textureMapping(glm::vec3 & ph , glm::vec3 & ret_color, spSet &sp)
 {
 	using namespace glm;
 	vec3 nph = ph;
