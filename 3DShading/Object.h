@@ -9,6 +9,8 @@
 #define BOUNDARY -2.0f
 #define SPECTHRESHOLD 200.0f
 #define PI 3.14
+#define ENERGYTHRESHOLD 0.01
+#define IRR 0
 //using namespace glm;
 
 class spSet
@@ -33,6 +35,8 @@ public:
 	Ray rf;	//reflected ray
 	Ray rt;	//refracted ray
 	glm::vec3 color;
+	float energy;
+	FresnelSet() { energy = 1; }
 };
 
 class MyObject
@@ -45,11 +49,15 @@ public:
 	glm::vec3 color_specular;
 	ImageData *texture;
 	ImageData *normalMap;
+	ImageData *irrMap;
 	glm::vec3 txP0;
 	glm::vec3 nt0;
 	glm::vec3 nt1;
 	float s0;
 	float s1;
+	float eps = 1e-2;
+	float transparency = 1;
+	float yeta = 2.0 / 3.0;
 	int shape;
 	virtual float hit(glm::vec3 npe, glm::vec3 pe, spSet &sp) =0;	//returns th
 	float diffuse(glm::vec3 &npe, glm::vec3 &pe, float &th, Light& light, spSet &sp);
@@ -57,10 +65,12 @@ public:
 	virtual float shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 ph) = 0;
 	virtual float getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp) = 0;
 	virtual float textureMapping(glm::vec3& ph, glm::vec3 &ret_color, spSet &sp) =0 ;
-	float fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs);
+	float fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs, spSet ss);
+	float shadowCast(glm::vec3 ph, MyObject** obj, int objListLen,Light LS, spSet ss);
 	float specularFunction(float S);
 	float diffuseFunction(float T);
 	float shadowFunction(float T_s);
+	float fresnelFunction(float F);
 };
 
 

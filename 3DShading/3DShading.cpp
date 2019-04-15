@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "ImageData.h"
 #define NONE -1
-#define M 4
+#define M 1
 
 int Main_Window;
 static int MouseX;
@@ -14,13 +14,13 @@ static int Button = NONE;
 #define SCREEN_WIDTH 900
 #define SCREEN_HEIGHT 900
 
-
+using namespace std;
 using namespace glm;
 
 UCHAR *pixels;
 Camera cam;
 MyObject * objList[10]; //allowing a fixed amount of objects
-vec3 LightSource = vec3(0, 500, 1000);
+vec3 LightSource = vec3(-1000, -5000, 5000);
 vec3 LD = vec3(0, -1, 0);
 float Ltheta = 70.0*PI / 180.0;
 Light originalLL(POINT, LightSource, LD, Ltheta);
@@ -45,11 +45,11 @@ int objNum = 0;
 
 //############Texture Maps##########
 ImageData eyeTexturemap("eye.jpg");
-
+ImageData floorTexturemap("tileable-textures-cracked-brown-soil-seamless-tileable-texture-stock-photo-colourbox.jpg");
 
 ImageData wallTexturemap("seamless-cubic-stone-road-floor-texture-free-221.jpg");
 
-ImageData skyTexturemap("HDR-Day2-_1_.jpg");
+ImageData skyTexturemap("0 (2).jpg");
 //#################################
 std::random_device rd;  //Will be used to obtain a seed for the random number engine
 std::mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -61,33 +61,6 @@ static void init(void)
 	glClearColor(1, 1, 1, 1); // Set background color.
 	pixels = new unsigned char[SCREEN_WIDTH * SCREEN_HEIGHT * 3];
 }
-
-void setPixels()
-{
-	// Example to read image, modify and display it
-	// Initialize a image instance by reading an image file
-	// Check the class file to find more construction methods
-	ImageData img("viz.jpg");
-	// Change the global variable to make display window fit the image size
-	int width = img.getWidth();
-	int height = img.getHeight();
-	// Traversal pixels in the image
-	for (int j = 0; j < height; j += 10)
-	{
-		for (int i = 0; i < width; i += 10)
-		{
-			// Get image color at position i, j
-			ColorRGBA cur_color = img.getRGBA(i, j);
-			// Change the pixel color at i, j
-			// For example, make the color half of the original value
-			img.setRGBA(i, j, cur_color * 0.5);
-		}
-	}
-	// Read color values into pixmap array
-	//img.getPixels(pixels);
-	img.writeFile("newViza.jpg");
-}
-
 
 static void windowResize(int w, int h)
 {
@@ -106,16 +79,15 @@ static void windowDisplay(void)
 	glRasterPos2i(0, 0);
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-
 	//############setting camera##############//
 	cam.p = vec3(MouseX - SCREEN_WIDTH / 2.0, 0, MouseY+ SCREEN_HEIGHT/2.0);
-	/*cam.p = vec3(341, 0, 347);*/
-	cam.p = vec3(348, 0, -20);
+	cam.p = vec3(-1000, 300, -200);
+	//cam.p = vec3(-1000, 0, 0);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
 	cam.sx = 10;
 	cam.sy = 10;
-	cam.d = 5;
+	cam.d = 7;			//90 vertical fov
 	printf("Camera: %lf,%lf,%lf\n", cam.p[0], cam.p[1], cam.p[2]);
 
 	vec3 sCenter = cam.p + normalize(cam.v0) * (float)cam.d;
@@ -137,7 +109,6 @@ static void windowDisplay(void)
 
 	//###############################
 
-
 	//#########################Setting Light###################
 	vec3 ln2 = normalize(originalLL.xd);
 	vec3 ln0 = normalize(glm::cross(ln2, originalLL.direction));
@@ -145,7 +116,6 @@ static void windowDisplay(void)
 	vec3 ls0 = originalLL.position - ln0 * (float)(originalLL.sx / 2.0) - ln1 * (float)(originalLL.sy / 2.0);
 	//###################################
 
-	//printf("Sphere: %lf,%lf,%lf\n", sp1.p0[0], sp1.p0[1], sp1.p0[2]);
 	
 	double eps = 1e-4;
 
@@ -192,7 +162,6 @@ static void windowDisplay(void)
 						exit(0);
 						//return FAILCODE;
 					}
-
 					//########################
 					if (objDrawn >= 0)
 					{
@@ -202,19 +171,12 @@ static void windowDisplay(void)
 						//####################Texturing & reflecting##################
 						if (objDrawn == 1 || objDrawn == 2 || objDrawn == 3)
 						{
-							Plane* pl = (Plane*)(objList[objDrawn]);
-							glm::vec3 nt2 = pl->n0;
-							pl->nt0 = normalize(cross(vec3(0, 0, 1), nt2));
-							if(objDrawn == 1)
-								pl->nt0 = normalize(cross(vec3(0, 1, 0), nt2));
-							pl->nt1 = normalize(cross(pl->nt0, nt2));
-							pl->s0 = 800;
-							pl->s1 = 600;
-							pl->txP0 = pl->p0;
+							//Plane* pl = (Plane*)(objList[objDrawn]);
+
 							objList[objDrawn]->textureMapping(ph, drawColor, shdingPointSet);
 						}
 
-						if (objDrawn == 0)
+						if (objDrawn == 0 || objDrawn == 2) // reflecting sphere
 						{
 							Sphere* spt = (Sphere*)(objList[objDrawn]);
 							glm::vec3 nt2 = n2;
@@ -226,12 +188,10 @@ static void windowDisplay(void)
 							Ray income;
 							income.v = npe;
 							income.p = cam.p;
-							spt->fresnel(ph, objList, objNum, income, fs);
+							spt->fresnel(ph, objList, objNum, income, fs, shdingPointSet);
 							drawColor = fs.color;
 						}
 						//###################################
-
-
 						Light LL = originalLL;
 						if (originalLL.type == AREA)
 						{
@@ -239,79 +199,15 @@ static void windowDisplay(void)
 							float jl = ((jj+jl_start)%M + rj) * 1.0 / M;
 							LL.position = ls0 + ln0 * il * originalLL.sx + ln1 * jl *originalLL.sy;
 						}
-
 						//##################Diffusing & Specular Highlight####################
-						//float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL);
+						float T = objList[objDrawn]->diffuse(npe, cam.p, th, LL, shdingPointSet);
 						/*float T = 1;*/
 						float S = objList[objDrawn]->specular(npe, cam.p, th, LL,shdingPointSet);
 						//drawColor = T * drawColor + (1 - T)*objList[objDrawn]->color_dark;
 
-
-
-
-
-
-
 						//###############Cast Shadow################//
-						float T_s=0;
-						int spot_flag = 0;
-						float d = 20;
-
-						
-						vec3 n;
-						objList[objDrawn]->getNormal(ph, n, shdingPointSet);
-						vec3 ph_d = ph - d * n;
-						vec3 pl = ph_d - LL.position;
-						vec3 npl = normalize(pl);
-						
-
-						if (LL.type == DIR)
-						{
-							npl = normalize(-LL.direction);
-							LL.position = ph_d - 10000.0f * npl;
-							pl = ph_d - LL.position;
-						}
-						if (LL.type == SPOT)
-						{	
-							vec3 nL = normalize(LL.position - ph_d);
-							if ( dot(nL, LL.direction) < cos(LL.theta))
-							{
-								spot_flag = 1;
-							}
-						}
-						float totalLength = 0;
-						
-						float costheta = 1;
-
-						if (!spot_flag)
-						{
-							for (int oo = 0; oo < objNum; oo++)
-							{
-
-								float slen = 0;
-								float lh = objList[oo]->shadowLength(npl, LL, slen, ph_d);
-								if (lh < glm::length(pl) && fabs(lh - glm::length(pl)) > 0.1 && lh > 0)
-								{
-									totalLength = totalLength + slen;
-								}
-
-								if (oo == objDrawn)
-								{
-									float r = glm::length(LL.position + lh * npl - ph_d);
-									costheta = d*1.0 / r;
-									costheta = (costheta + 1) / 2.0;
-								}
-							}
-
-							T_s = d / (totalLength/* * costheta*/);
-						}
-						//if (objDrawn == 0)
-						//	T_s = objList[objDrawn]->shadowFunction(T_s);
-						if (T_s > 1)
-							T_s = 1;
-						if (T_s < 0)
-							T_s = 0;
-
+					
+						float T_s = objList[objDrawn]->shadowCast(ph, objList, objNum, LL, shdingPointSet);
 						//#################Projecting########################
 
 						//glm::vec3 pColor;
@@ -359,6 +255,7 @@ static void windowDisplay(void)
 	ImageData img(SCREEN_WIDTH, SCREEN_HEIGHT, pixels);
 
 	img.writeFile("result.jpg");
+	printf("\n");
 	glFlush();
 }
 
@@ -411,9 +308,6 @@ void handleMotion(int x, int y)
 
 int main(int argc, char *argv[])
 {
-	//image test
-	setPixels();
-
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
 	objList[objNum++] = &sp1;
 	/*objList[objNum++] = &pl1;*/
@@ -426,17 +320,30 @@ int main(int argc, char *argv[])
 	sp1.texture = &eyeTexturemap;
 	ImageData spN("12759-normal.jpg");
 	sp1.normalMap = &spN;
-	sp1.normalMap = NULL;
+	/*sp1.normalMap = NULL;*/
 	sp1.northPole = vec3(0, 0, 1);
 	//pl1.texture = &wallTexturemap;
-	pl3.texture = &wallTexturemap;
+	pl3.texture = &floorTexturemap;
+	glm::vec3 nt2 = pl3.n0;
+	pl3.nt0 = normalize(cross(vec3(0, 0, 1), nt2));
+	pl3.nt0 = normalize(cross(vec3(0, 1, 0), nt2));
+	pl3.nt1 = normalize(cross(pl3.nt0, nt2));
+	pl3.s0 = 800;
+	pl3.s1 = 600;
+	pl3.txP0 = pl3.p0;
+
 	ifsp.texture = &skyTexturemap;
 
-	//ImageData vizimage("viz.jpg");
-	//char file[100] = "humanoid_tri.obj";
-	//ObjFromFile cube(file);
-	//cube.texture = &vizimage;
-	//objList[objNum++] = &cube;
+	ImageData vizimage("viz.jpg");
+	ImageData irr("irtex.jpg");
+	sp1.irrMap = &irr;
+	char file[100] = "cube.obj";
+	ObjFromFile cube(file);
+	cube.texture = &vizimage;
+	cube.irrMap = &irr;
+	objList[objNum++] = &cube;
+	sp1.transparency = 0;
+	cube.transparency = 0;
 
 	objList[objNum++] = &ifsp;
 	glutInit(&argc, argv);      // intialize glut package

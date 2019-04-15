@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Plane.h"
 
-float Plane::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
+inline float Plane::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	if (dot(n0, p0 - pe) > 0)
 	{
@@ -31,7 +31,7 @@ Plane::Plane(glm::vec3 n0, glm::vec3 p0, glm::vec3 color)
 
 
 
-float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
+inline float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
 {
 	if (dot(n0, p0 - light.position) > 0)
 	{
@@ -45,7 +45,7 @@ float Plane::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 p
 	return lh;
 }
 
-float Plane::textureMapping(glm::vec3& ph , glm::vec3 &ret_color, spSet &sp)
+inline float Plane::textureMapping(glm::vec3& ph , glm::vec3 &ret_color, spSet &sp)
 {
 	float x = dot(1.0f / s0 * nt0, ph - txP0);
 	float y = dot(1.0f / s1 * nt1, ph - txP0);
@@ -76,7 +76,7 @@ float Plane::textureMapping(glm::vec3& ph , glm::vec3 &ret_color, spSet &sp)
 	return 0.0f;
 }
 
-float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp)
+inline float Plane::getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp)
 {
 	normal = n0;
 	return 0.0f;
@@ -211,7 +211,7 @@ ObjFromFile::ObjFromFile(char * filename)
 	color_specular= glm::vec3(255, 255, 255);
 }
 
-float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
+inline float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 {
 	using namespace glm;
 	float th_min = 1e8;
@@ -269,40 +269,40 @@ float ObjFromFile::hit(glm::vec3 npe, glm::vec3 pe, spSet &sp)
 	return MISS;
 }
 
-float ObjFromFile::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
+inline float ObjFromFile::shadowLength(glm::vec3 & npl, Light light, float & ret, glm::vec3 ph)
 {
 	return 0.0f;
 }
 
-float ObjFromFile::textureMapping(glm::vec3 & ph, glm::vec3 & ret_color, spSet &sp)
+inline float ObjFromFile::textureMapping(glm::vec3 & ph, glm::vec3 & ret_color, spSet &sp)
 {
-	//if (get<0>(texTuple[sp.hitNum%tNum]) == 3)
-	//{
-	//	int a = 0;
-	//}
-	//glm::vec2 v0 = texturePoints[get<0>(texTuple[sp.hitNum%tNum]) - 1];
-	//glm::vec2 v1 = texturePoints[get<1>(texTuple[sp.hitNum%tNum]) - 1];
-	//glm::vec2 v2 = texturePoints[get<2>(texTuple[sp.hitNum%tNum]) - 1];
+	if (get<0>(texTuple[sp.hitNum%tNum]) == 3)
+	{
+		int a = 0;
+	}
+	glm::vec2 v0 = texturePoints[get<0>(texTuple[sp.hitNum%tNum]) - 1];
+	glm::vec2 v1 = texturePoints[get<1>(texTuple[sp.hitNum%tNum]) - 1];
+	glm::vec2 v2 = texturePoints[get<2>(texTuple[sp.hitNum%tNum]) - 1];
 
-	//glm::vec2 tp = (1-sp.u-sp.v)*v0+ v1* sp.u +  v2* sp.v;
-	//int width = texture->getWidth();
-	//int height = texture->getHeight();
-	//int u_i = floor(width* tp.x);
-	//int v_i = floor(height * tp.y);
-	//if (u_i >= width)
-	//	u_i = width - 1;
-	//if (v_i >= height)
-	//	v_i = height - 1;
-	//if (u_i < 0)
-	//	u_i = 0;
-	//if (v_i < 0)
-	//	v_i = 0;
-	//ColorRGBA clr = texture->getRGBA((int)u_i, (int)v_i);
-	//ret_color = glm::vec3(clr.r*255, clr.g*255, clr.b*255);
+	glm::vec2 tp = (1-sp.u-sp.v)*v0+ v1* sp.u +  v2* sp.v;
+	int width = texture->getWidth();
+	int height = texture->getHeight();
+	int u_i = floor(width* tp.x);
+	int v_i = floor(height * tp.y);
+	if (u_i >= width)
+		u_i = width - 1;
+	if (v_i >= height)
+		v_i = height - 1;
+	if (u_i < 0)
+		u_i = 0;
+	if (v_i < 0)
+		v_i = 0;
+	ColorRGBA clr = texture->getRGBA((int)u_i, (int)v_i);
+	ret_color = glm::vec3(clr.r*255, clr.g*255, clr.b*255);
 	return 0.0f;
 }
 
-float ObjFromFile::getNormal(glm::vec3 & ph, glm::vec3 & normal, spSet &sp)
+inline float ObjFromFile::getNormal(glm::vec3 & ph, glm::vec3 & normal, spSet &sp)
 {
 	glm::vec3 n0 = vertices[get<1>(tuples[sp.hitNum%tNum])-1] - vertices[get<0>(tuples[sp.hitNum%tNum])-1];
 	glm::vec3 n1 = vertices[get<2>(tuples[sp.hitNum%tNum])-1] - vertices[get<1>(tuples[sp.hitNum%tNum])-1];
