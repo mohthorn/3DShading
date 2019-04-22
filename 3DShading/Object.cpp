@@ -48,17 +48,17 @@ float MyObject::specular(glm::vec3 & npe, glm::vec3 & pe, float & th, Light & li
 
 
 
-float MyObject::fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs, spSet ss)
+float MyObject::fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs, spSet ss, glm::vec3 distort)
 {
 	using namespace glm;
 	fs.energy *= (1.0 - transparency)*0.95;
-
 
 	vec3 normal;
 	this->getNormal(ph, normal, ss);
 
 	vec3 E = normalize(-inCome.v);
 	vec3 Re = -1.0f *E + 2.0f * dot(normal, E)*normal;
+	Re += distort;
 	Re = normalize(Re);
 	float rtTh[2] = { INFINITE,INFINITE };
 	int rtHitObj[2] = { -1,-1 };
@@ -66,7 +66,9 @@ float MyObject::fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome
 	//float yeta = 2.0 / 3.0;
 	float C = dot(normal, E);
 	float F = fresnelFunction(1 - C);
+	F = 1;
 	vec3 T = (-1.0f / yeta) * E + (C / yeta - sqrt((yeta*yeta - 1) / yeta * yeta + 1))*normal;
+	T += distort;
 	T = normalize(T);
 	spSet stf[2];
 	
@@ -124,7 +126,7 @@ float MyObject::fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome
 		splitted.p = rtPh[j];
 		rtFr[j].energy = nf[j] * fs.energy;
 		/*obj[rtHitObj[j]]->textureMapping(rtPh[j], rtFr[j].color, stf[j]);*/
-		obj[rtHitObj[j]]->fresnel(rtPh[j], obj, objListLen, splitted, rtFr[j], stf[j]);
+		obj[rtHitObj[j]]->fresnel(rtPh[j], obj, objListLen, splitted, rtFr[j], stf[j], distort);
 	}
 
 	fs.color =(1-transparency)* ( F * rtFr[0].color + (1 - F) * rtFr[1].color) + transparency* selfColor ;

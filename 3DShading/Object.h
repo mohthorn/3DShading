@@ -65,7 +65,7 @@ public:
 	virtual float shadowLength(glm::vec3 & npl, Light light, float &ret, glm::vec3 ph) = 0;
 	virtual float getNormal(glm::vec3 &ph, glm::vec3 &normal, spSet &sp) = 0;
 	virtual float textureMapping(glm::vec3& ph, glm::vec3 &ret_color, spSet &sp) =0 ;
-	float fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs, spSet ss);
+	float fresnel(glm::vec3 ph, MyObject** obj, int objListLen, Ray inCome, FresnelSet &fs, spSet ss, glm::vec3 distort);
 	float shadowCast(glm::vec3 ph, MyObject** obj, int objListLen,Light LS, spSet ss);
 	float specularFunction(float S);
 	float diffuseFunction(float T);
