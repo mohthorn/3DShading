@@ -11,10 +11,13 @@ static int MouseX;
 static int MouseY;
 static int Button = NONE;
 
-#define SCREEN_WIDTH 900
-#define SCREEN_HEIGHT 900
-#define DOF 0
-#define MOTIONBLUR 1
+#define SCREEN_WIDTH 1280
+#define SCREEN_HEIGHT 720
+#define DOF 1
+#define MOTIONBLUR 0
+#define CAMERA_PAINTING 1
+#define PAINTING_FRAMES 36
+#define TRANFORMING_FRAMES 36
 
 using namespace std;
 using namespace glm;
@@ -31,8 +34,10 @@ Light originalLL(POINT, LightSource, LD, Ltheta);
 ImageData projectTexture("viz.jpg");
 Projector pr1(vec3(0,500,1000),vec3(0,0,-1),vec3(0,1,0),10,20,20,&projectTexture);
 
-//######################################
-
+//###############Animation#############
+int curFrame = 0;
+ImageData PaintingImage("Blood-dripping.jpg");
+ImageData PaintingImage2("symbol.png");
 //###############setting objects##############//
 vec3 sphereColor = vec3(255, 255, 255);
 vec3 planeColor = vec3(255, 255, 255);
@@ -48,7 +53,7 @@ int objNum = 0;
 ImageData eyeTexturemap("eye.jpg");
 ImageData floorTexturemap("tileable-textures-cracked-brown-soil-seamless-tileable-texture-stock-photo-colourbox.jpg");
 
-ImageData wallTexturemap("seamless-cubic-stone-road-floor-texture-free-221.jpg");
+//ImageData wallTexturemap("seamless-cubic-stone-road-floor-texture-free-221.jpg");
 
 ImageData skyTexturemap("0 (2).jpg");
 float FocalDistance = 1000;
@@ -90,8 +95,8 @@ static void windowDisplay(void)
 	//cam.p = vec3(-1000, 0, 0);
 	cam.v0 = center - cam.p;
 	cam.vUp = vec3(0, 0, 1);
-	cam.sx = 10;
-	cam.sy = 10;
+	cam.sx = 12.8;
+	cam.sy = 7.2;
 	cam.d = 7;			//90 vertical fov
 	printf("Camera: %lf,%lf,%lf\n", cam.p[0], cam.p[1], cam.p[2]);
 
@@ -153,9 +158,23 @@ static void windowDisplay(void)
 
 					vec3 newCamPosition = cam.p;	//for dof
 
-					if (MOTIONBLUR)
+					if (CAMERA_PAINTING)
 					{
-						
+						int paint_x = floor(ix*1.0  * (PaintingImage.getWidth()-1));
+						int paint_y = floor(jy*1.0 * (PaintingImage.getHeight() - 1));
+						ColorRGBA paintColor = PaintingImage.getRGBA(paint_x, paint_y);
+						vec3 paint = vec3(paintColor.r, paintColor.g, paintColor.b);
+						npe = s0 + n0 * ix * cam.sx + n1 * jy *cam.sy + float(std::min(curFrame,2*PAINTING_FRAMES) *3.0/PAINTING_FRAMES)*1.0f
+							*(paint[0]*n0 + paint[1]*n1+paint[2]*n2 ) - cam.p;
+						int paint_x2 = floor(ix*1.0  * (PaintingImage2.getWidth() - 1));
+						int paint_y2 = floor(jy*1.0 * (PaintingImage2.getHeight() - 1));
+						ColorRGBA paintColor2 = PaintingImage2.getRGBA(paint_x2, paint_y2);
+						vec3 paint2 = vec3(paintColor2.r, paintColor2.g, paintColor2.b);
+						npe = npe + 3.0f*float(std::max(curFrame - PAINTING_FRAMES, 0)*1.0/TRANFORMING_FRAMES) * (paint2[0] * n0 + paint2[1] * n1 + paint2[2] * n2);
+						npe = normalize(npe);
+					}
+					if (MOTIONBLUR)
+					{	
 						sp1.p0 = center + ((timeCur+ii*M +jj)%(int)(timeEnd - timeStart) + frameInt - timeStart) / (timeEnd - timeStart)* (endPos - center);
 					}
 					if (DOF)
@@ -272,11 +291,13 @@ static void windowDisplay(void)
 			pixels[k + 1] =colorSum[1] / (float)(M*M);
 			pixels[k + 2] =colorSum[2] / (float)(M*M);
 		}
-	glDrawPixels(SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
 	
+	glDrawPixels(SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);	
 	ImageData img(SCREEN_WIDTH, SCREEN_HEIGHT, pixels);
-
-	img.writeFile("result.jpg");
+	char saveName[50];
+	sprintf(saveName, "animations/%03d.png", curFrame);
+	img.writeFile(saveName);
+	curFrame++;
 	printf("\n");
 	glFlush();
 }
@@ -328,6 +349,14 @@ void handleMotion(int x, int y)
 	MouseY = y;
 }
 
+void handleTime(int a)
+{
+	glutPostRedisplay();
+	glutTimerFunc(1000, handleTime, 10);
+	Sleep(200);
+	printf("wait 200\n");
+}
+
 int main(int argc, char *argv[])
 {
 	//camera1 = camera(glm::vec3(0, 0, 10), glm::vec3(0, 0.4, 0), glm::vec3(0, 1, 0), 45);
@@ -375,10 +404,10 @@ int main(int argc, char *argv[])
 	Main_Window = glutCreateWindow("glsl");
 	glutReshapeFunc(windowResize);
 	glutDisplayFunc(windowDisplay);
-	glutMouseFunc(handleButtons);
-	glutMotionFunc(handleMotion);
-	glutMouseWheelFunc(handlewheel);
-
+	//glutMouseFunc(handleButtons);
+	//glutMotionFunc(handleMotion);
+	//glutMouseWheelFunc(handlewheel);
+	glutTimerFunc(1000, handleTime, 10);
 	glewInit();
 	if (glewIsSupported("GL_VERSION_4_3"))
 	{
